@@ -48,5 +48,5 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// mpicc -o mpi_array mpi_array.c
-// mpirun -np 3 ./mpi_array
+// mpicc -o mpi_even_odd_count mpi_even_odd_count.c
+// mpirun -np 3 ./mpi_even_odd_count

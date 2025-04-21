@@ -52,5 +52,7 @@ int main(int argc, char** argv) {
     return 0;
 }
 
+//mpicc mpi_str_toggle.c -ompi_str_toggle
+//mpirun -n 3 ./mpi_str_toggle
 //Enter a string: DOG
 //Toggled string: dog

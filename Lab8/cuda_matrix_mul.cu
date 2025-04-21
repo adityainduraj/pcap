@@ -81,3 +81,4 @@ int main() {
     cudaFree(d_C);
     return 0;
 }
+

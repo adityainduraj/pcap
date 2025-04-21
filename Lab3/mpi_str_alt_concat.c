@@ -78,5 +78,5 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// mpicc -o mpi_interleave mpi_interleave.c
-// mpicc -o mpi_interleave mpi_interleave.c
+// mpicc -o mpi_str_alt_concat mpi_str_alt_concat.c
+// mpirun -np 2 ./mpi_str_alt_concat

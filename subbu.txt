@@ -1,0 +1,3677 @@
+
+Lab1/mpi_alternate_hello_world.c
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    int rank, size;
+
+    // Initialize the MPI environment
+    MPI_Init(&argc, &argv);
+
+    // Get the rank of the current process
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Get the total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Check the rank and print the appropriate message
+    if (rank % 2 == 0) {
+        printf("Process %d: Hello\n", rank);
+    } else {
+        printf("Process %d: World\n", rank);
+    }
+
+    // Finalize the MPI environment
+    MPI_Finalize();
+    return 0;
+}
+
+//Process 1: World
+//Process 2: Hello
+//Process 0: Hello
+
+
+Lab1/mpi_calculator.c
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char** argv) {
+    int rank, size;
+    double num1, num2, result;
+
+    // Initialize MPI environment
+    MPI_Init(&argc, &argv);
+
+    // Get the rank of the current process
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Get the total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (size < 4) {
+        if (rank == 0) {
+            printf("This program requires at least 4 processes.\n");
+        }
+        MPI_Finalize();
+        return 0;
+    }
+
+    if (rank == 0) {
+        // The root process takes two input numbers
+        printf("Enter two numbers: ");
+        scanf("%lf %lf", &num1, &num2);
+    }
+
+    // Broadcast the input numbers to all processes
+    MPI_Bcast(&num1, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    MPI_Bcast(&num2, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Perform operations based on the process rank
+    switch (rank) {
+        case 0: // Addition
+            result = num1 + num2;
+            printf("Process %d: Addition (%.2lf + %.2lf) = %.2lf\n", rank, num1, num2, result);
+            break;
+        case 1: // Subtraction
+            result = num1 - num2;
+            printf("Process %d: Subtraction (%.2lf - %.2lf) = %.2lf\n", rank, num1, num2, result);
+            break;
+        case 2: // Multiplication
+            result = num1 * num2;
+            printf("Process %d: Multiplication (%.2lf * %.2lf) = %.2lf\n", rank, num1, num2, result);
+            break;
+        case 3: // Division
+            if (num2 != 0) {
+                result = num1 / num2;
+                printf("Process %d: Division (%.2lf / %.2lf) = %.2lf\n", rank, num1, num2, result);
+            } else {
+                printf("Process %d: Division by zero is not allowed.\n", rank);
+            }
+            break;
+        default:
+            // Extra processes (if any) do nothing
+            printf("Process %d: No operation assigned.\n", rank);
+            break;
+    }
+
+    // Finalize MPI environment
+    MPI_Finalize();
+    return 0;
+}
+
+//mpirun -np 4 ./l1q3
+//6 7
+//Enter two numbers: Process 0: Addition (6.00 + 7.00) = 13.00
+//Process 2: Multiplication (6.00 * 7.00) = 42.00
+//Process 1: Subtraction (6.00 - 7.00) = -1.00
+//Process 3: Division (6.00 / 7.00) = 0.86
+//
+
+
+Lab1/mpi_even_fact_odd_fib.c
+
+#include <mpi.h>
+#include <stdio.h>
+
+// Function to calculate factorial
+unsigned long long factorial(int n) {
+    if (n == 0 || n == 1)
+        return 1;
+    unsigned long long fact = 1;
+    for (int i = 2; i <= n; i++) {
+        fact *= i;
+    }
+    return fact;
+}
+
+// Function to calculate the nth Fibonacci number
+unsigned long long fibonacci(int n) {
+    if (n == 0)
+        return 0;
+    if (n == 1)
+        return 1;
+    unsigned long long a = 0, b = 1, c;
+    for (int i = 2; i <= n; i++) {
+        c = a + b;
+        a = b;
+        b = c;
+    }
+    return b;
+}
+
+int main(int argc, char** argv) {
+    int rank, size;
+
+    // Initialize MPI environment
+    MPI_Init(&argc, &argv);
+
+    // Get the rank of the current process
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Get the total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Check whether the rank is even or odd
+    if (rank % 2 == 0) {
+        // Even-ranked process: calculate factorial
+        unsigned long long fact = factorial(rank);
+        printf("Process %d (Even): Factorial(%d) = %llu\n", rank, rank, fact);
+    } else {
+        // Odd-ranked process: calculate Fibonacci
+        unsigned long long fib = fibonacci(rank);
+        printf("Process %d (Odd): Fibonacci(%d) = %llu\n", rank, rank, fib);
+    }
+
+    // Finalize MPI environment
+    MPI_Finalize();
+    return 0;
+}
+
+//Process 2 (Even): Factorial(2) = 2
+//Process 3 (Odd): Fibonacci(3) = 2
+//Process 0 (Even): Factorial(0) = 1
+//Process 1 (Odd): Fibonacci(1) = 1
+
+
+Lab1/mpi_num_reverse.c
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+// Function to reverse the digits of an integer
+int reverse_number(int num) {
+    int reversed = 0;
+    while (num > 0) {
+        reversed = reversed * 10 + num % 10;
+        num /= 10;
+    }
+    return reversed;
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int input_array[9] = {18, 523, 301, 1234, 2, 14, 108, 150, 1928};
+    int output_array[9];
+    int local_value, reversed_value;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (size != 9) {
+        if (rank == 0) {
+            printf("This program requires exactly 9 processes.\n");
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Each process gets one number
+    local_value = input_array[rank];
+    reversed_value = reverse_number(local_value);
+
+    // Gather results back to process 0
+    MPI_Gather(&reversed_value, 1, MPI_INT, output_array, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        printf("Reversed array: ");
+        for (int i = 0; i < 9; i++) {
+            printf("%d ", output_array[i]);
+        }
+        printf("\n");
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o reverse_mpi reverse_mpi.c
+// mpirun -np 9 ./reverse_mpi
+
+
+Lab1/mpi_prime_1-100.c
+
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+
+// Function to check if a number is prime
+bool is_prime(int num) {
+    if (num < 2) return false;
+    for (int i = 2; i * i <= num; i++) {
+        if (num % i == 0) return false;
+    }
+    return true;
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int start, end;
+    int local_primes[50]; // Local storage for found primes
+    int local_count = 0;
+    int total_primes[100]; // To store all prime numbers (final result)
+    int total_count = 0;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (size != 2) {
+        if (rank == 0) {
+            printf("This program requires exactly 2 processes.\n");
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Divide the range between two processes
+    start = (rank == 0) ? 1 : 51;
+    end = (rank == 0) ? 50 : 100;
+
+    // Find prime numbers in the assigned range
+    for (int i = start; i <= end; i++) {
+        if (is_prime(i)) {
+            local_primes[local_count++] = i;
+        }
+    }
+
+    // Gather results in process 0
+    MPI_Gather(&local_count, 1, MPI_INT, &total_count, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Gather(local_primes, local_count, MPI_INT, total_primes, local_count, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Process 0 prints the results
+    if (rank == 0) {
+        printf("Prime numbers between 1 and 100: ");
+        for (int i = 0; i < total_count; i++) {
+            printf("%d ", total_primes[i]);
+        }
+        printf("\n");
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_primes mpi_primes.c
+// mpirun -np 2 ./mpi_primes
+
+
+Lab1/mpi_rank.c
+
+#include <mpi.h>
+#include <stdio.h>
+#include <math.h>
+
+int main(int argc, char** argv) {
+    int rank, size, x;
+    // Initialize MPI environment
+    MPI_Init(&argc, &argv);
+
+    // Get the rank of the current process
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Get the total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        // The root process takes input
+        printf("Enter the value of x (integer): ");
+        fflush(stdout);  // Ensure prompt is displayed
+        scanf("%d", &x);
+    }
+
+    // Broadcast the value of x to all processes
+    MPI_Bcast(&x, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process calculates pow(x, rank)
+    double result = pow(x, rank);
+
+    // Print the result from each process
+    printf("Process %d: pow(%d, %d) = %f\n", rank, x, rank, result);
+
+    // Finalize the MPI environment
+    MPI_Finalize();
+    return 0;
+}
+
+//Enter the value of x (integer): 5    
+//Process 1: pow(5, 1) = 5.000000
+//Process 2: pow(5, 2) = 25.000000
+//Process 0: pow(5, 0) = 1.000000
+
+
+Lab1/mpi_str_toggle.c
+
+
+#include <mpi.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+int main(int argc, char** argv) {
+    int rank, size;
+    char str[100];
+
+    // Initialize MPI environment
+    MPI_Init(&argc, &argv);
+
+    // Get the rank of the current process
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    // Get the total number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        // Root process takes the input string
+        printf("Enter a string: ");
+        fflush(stdout); // Ensure prompt is displayed
+        scanf("%s", str);
+    }
+
+    // Broadcast the string to all processes
+    MPI_Bcast(str, 100, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Get the length of the string
+    int len = strlen(str);
+
+    if (rank < len) {
+        // Toggle the character at the index equal to the process rank
+        if (isupper(str[rank])) {
+            str[rank] = tolower(str[rank]);
+        } else if (islower(str[rank])) {
+            str[rank] = toupper(str[rank]);
+        }
+    }
+
+    // Gather the modified strings back to the root process
+    char result[100];
+    MPI_Gather(&str[rank], 1, MPI_CHAR, result, 1, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Root process prints the final toggled string
+    if (rank == 0) {
+        printf("Toggled string: %s\n", result);
+    }
+
+    // Finalize MPI environment
+    MPI_Finalize();
+    return 0;
+}
+
+//Enter a string: DOG
+//Toggled string: dog
+
+
+Lab2/deadlock_programs.txt
+
+//deadlock_synchronous
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, data;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (size != 2) {
+        if (rank == 0) {
+            printf("Run this program with 2 processes!\n");
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    data = rank; // Each process holds its rank as data
+
+    if (rank == 0) {
+        MPI_Ssend(&data, 1, MPI_INT, 1, 0, MPI_COMM_WORLD); // Sends first, no matching receive
+        MPI_Recv(&data, 1, MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else {
+        MPI_Ssend(&data, 1, MPI_INT, 0, 1, MPI_COMM_WORLD); // Sends first, no matching receive
+        MPI_Recv(&data, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    printf("Process %d received data %d\n", rank, data);
+    MPI_Finalize();
+    return 0;
+}
+
+//deadlock_standard
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, data;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (size != 2) {
+        if (rank == 0) {
+            printf("Run this program with 2 processes!\n");
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    data = rank;
+
+    if (rank == 0) {
+        MPI_Send(&data, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+        MPI_Recv(&data, 1, MPI_INT, 1, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    } else {
+        MPI_Send(&data, 1, MPI_INT, 0, 1, MPI_COMM_WORLD);
+        MPI_Recv(&data, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    printf("Process %d received data %d\n", rank, data);
+    MPI_Finalize();
+    return 0;
+}
+
+
+// mpicc -o deadlock_synchronous deadlock_synchronous.c
+// mpicc -o deadlock_standard deadlock_standard.c
+
+// mpirun -np 2 ./deadlock_synchronous
+// mpirun -np 2 ./deadlock_standard
+
+
+Lab2/mpi_1+rank_fact.c
+
+#include <mpi.h>
+#include <stdio.h>
+
+// Function to compute factorial
+long long factorial(int num) {
+    if (num == 0 || num == 1) return 1;
+    long long fact = 1;
+    for (int i = 2; i <= num; i++) {
+        fact *= i;
+    }
+    return fact;
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size, N, i, sum = 0, partial_sum = 0;
+    long long local_factorial, global_sum = 0;
+
+    MPI_Init(&argc, &argv);                   // Initialize MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);     // Get process rank
+    MPI_Comm_size(MPI_COMM_WORLD, &size);     // Get total number of processes
+
+    if (rank == 0) {
+        // Root process reads the value of N
+        printf("Enter value of N: ");
+        scanf("%d", &N);
+        
+        // Broadcast N to all processes
+        for (i = 1; i < size; i++) {
+            MPI_Send(&N, 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+    } else {
+        // Receive N from root process
+        MPI_Recv(&N, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    // Compute sum of first 'rank' numbers
+    for (i = 1; i <= rank; i++) {
+        partial_sum += i;
+    }
+
+    // Compute factorial of the sum
+    local_factorial = factorial(partial_sum);
+
+    // Reduce all factorials to root process (sum them up)
+    MPI_Reduce(&local_factorial, &global_sum, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if (rank == 0) {
+        // Print final result at root process
+        printf("Final result: %lld\n", global_sum);
+    }
+
+    MPI_Finalize();  // Finalize MPI
+    return 0;
+}
+
+// mpicc -o mpi_factorial mpi_factorial.c
+// mpirun -np 5 ./mpi_factorial
+
+
+Lab2/mpi_bsend_square.c
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int number;
+    int *arr = NULL;
+    int buffer_size;
+    void *buffer;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Allocate buffer for MPI_Bsend
+    buffer_size = size * (sizeof(int) + MPI_BSEND_OVERHEAD);
+    buffer = malloc(buffer_size);
+    MPI_Buffer_attach(buffer, buffer_size);
+
+    if (rank == 0) {
+        // Root process (process 0): Generate an array and send elements
+        arr = (int *)malloc(size * sizeof(int));
+        printf("Root process initializing array:\n");
+        for (int i = 0; i < size; i++) {
+            arr[i] = i + 1; // Assign some values
+            printf("%d ", arr[i]);
+        }
+        printf("\n");
+
+        // Send one value to each process (including itself for uniformity)
+        for (int i = 1; i < size; i++) {
+            MPI_Bsend(&arr[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+
+        free(arr);
+    } else {
+        // Slave processes: Receive data and compute result
+        MPI_Recv(&number, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+        int result;
+        if (rank % 2 == 0) {
+            result = number * number; // Even process: Square
+            printf("Process %d received %d, squared result: %d\n", rank, number, result);
+        } else {
+            result = number * number * number; // Odd process: Cube
+            printf("Process %d received %d, cubed result: %d\n", rank, number, result);
+        }
+    }
+
+    // Detach and free buffer
+    MPI_Buffer_detach(&buffer, &buffer_size);
+    free(buffer);
+
+    MPI_Finalize();
+    return 0;
+}
+
+
+Lab2/mpi_element_increment.c
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, value;
+
+    MPI_Init(&argc, &argv);                     // Initialize MPI environment
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);       // Get process rank
+    MPI_Comm_size(MPI_COMM_WORLD, &size);       // Get total number of processes
+
+    if (rank == 0) {
+        // Root process initializes the value
+        printf("Enter an integer value: ");
+        scanf("%d", &value);
+
+        // Send the value to the first process
+        MPI_Send(&value, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+        printf("Process %d sent value %d to Process 1\n", rank, value);
+
+        // Receive final incremented value from last process
+        MPI_Recv(&value, 1, MPI_INT, size - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        printf("Final value received back at root process: %d\n", value);
+    } 
+    else {
+        // Receive value from previous process
+        MPI_Recv(&value, 1, MPI_INT, rank - 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        value += 1;  // Increment received value
+
+        if (rank == size - 1) {
+            // Last process sends the value back to root
+            MPI_Send(&value, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+            printf("Process %d (last) incremented value to %d and sent back to root\n", rank, value);
+        } 
+        else {
+            // Intermediate process sends the incremented value to the next process
+            MPI_Send(&value, 1, MPI_INT, rank + 1, 0, MPI_COMM_WORLD);
+            printf("Process %d incremented value to %d and sent to Process %d\n", rank, value, rank + 1);
+        }
+    }
+
+    MPI_Finalize(); // Finalize MPI environment
+    return 0;
+}
+
+// mpicc -o mpi_chain mpi_chain.c
+// mpirun -np 4 ./mpi_chain
+
+
+Lab2/mpi_master_slave_num.c
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int number;
+
+    MPI_Init(&argc, &argv);                     // Initialize the MPI environment
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);       // Get the rank of the process
+    MPI_Comm_size(MPI_COMM_WORLD, &size);       // Get the total number of processes
+
+    if (rank == 0) {
+        // Master process
+        for (int i = 1; i < size; i++) {
+            number = i * 100; // Example: send different number to each slave
+            printf("Master (process 0) sending %d to process %d\n", number, i);
+            MPI_Send(&number, 1, MPI_INT, i, 0, MPI_COMM_WORLD); // Standard send
+        }
+    } else {
+        // Slave processes
+        MPI_Recv(&number, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        printf("Slave process %d received number: %d\n", rank, number);
+    }
+
+    MPI_Finalize(); // Finalize the MPI environment
+    return 0;
+}
+
+// mpicc -o mpi_send_program mpi_send_program.c
+// mpirun -np 4 ./mpi_send_program
+
+
+Lab2/mpi_prime_check.c
+
+#include <mpi.h>
+#include <stdio.h>
+#include <math.h>
+
+// Function to check if a number is prime
+int is_prime(int num) {
+    if (num < 2) return 0;
+    for (int i = 2; i <= sqrt(num); i++) {
+        if (num % i == 0) return 0;
+    }
+    return 1;
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size, num;
+
+    MPI_Init(&argc, &argv);                     // Initialize MPI environment
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);       // Get process rank
+    MPI_Comm_size(MPI_COMM_WORLD, &size);       // Get total number of processes
+
+    int arr[size];  // Array to hold elements, size should match number of processes
+
+    if (rank == 0) {
+        // Master process reads the array
+        printf("Enter %d elements: ", size);
+        for (int i = 0; i < size; i++) {
+            scanf("%d", &arr[i]);
+        }
+
+        // Send each process its corresponding element
+        for (int i = 1; i < size; i++) {
+            MPI_Send(&arr[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+        num = arr[0];  // Master process keeps the first element
+    } else {
+        // Receive the number assigned to this process
+        MPI_Recv(&num, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    }
+
+    // Each process checks if its number is prime
+    int result = is_prime(num);
+
+    // Print the result from each process
+    printf("Process %d received %d, Prime: %s\n", rank, num, result ? "YES" : "NO");
+
+    MPI_Finalize(); // Finalize MPI environment
+    return 0;
+}
+
+// mpicc -o mpi_prime mpi_prime.c -lm
+// mpirun -np 5 ./mpi_prime
+
+
+Lab2/mpi_ssend_toggle.c
+
+#include <mpi.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+
+#define MAX_LEN 100
+
+// Function to toggle case
+void toggle_case(char *str) {
+    for (int i = 0; str[i] != '\0'; i++) {
+        if (islower(str[i]))
+            str[i] = toupper(str[i]);
+        else if (isupper(str[i]))
+            str[i] = tolower(str[i]);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    int rank;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    char word[MAX_LEN];
+
+    if (rank == 0) {
+        // Process 0: Sending a word
+        strcpy(word, "HelloMPI"); // Example word
+        printf("Process 0 sending: %s\n", word);
+        MPI_Ssend(word, MAX_LEN, MPI_CHAR, 1, 0, MPI_COMM_WORLD);
+
+        // Receiving toggled word
+        MPI_Recv(word, MAX_LEN, MPI_CHAR, 1, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        printf("Process 0 received: %s\n", word);
+    } 
+    else if (rank == 1) {
+        // Process 1: Receiving the word
+        MPI_Recv(word, MAX_LEN, MPI_CHAR, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        toggle_case(word);
+        printf("Process 1 toggled and sending: %s\n", word);
+
+        // Sending the toggled word back
+        MPI_Ssend(word, MAX_LEN, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_sync_send mpi_sync_send.c
+// mpirun -np 2 ./mpi_sync_send
+
+
+Lab3/mpi_collective_squares.c
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int M, N, total_elements;
+    int *global_array = NULL;  // Array to store all elements at root
+    int *local_array = NULL;   // Array for each process
+    double *local_results = NULL;  // Array to store results in each process
+    double *global_results = NULL; // Array to store all results at root
+
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Root process reads M and the array
+    if (rank == 0) {
+        printf("Enter the value of M: ");
+        scanf("%d", &M);
+        
+        N = size;  // Number of processes
+        total_elements = N * M;
+
+        // Allocate memory for global array
+        global_array = (int *)malloc(total_elements * sizeof(int));
+        printf("Enter %d elements:\n", total_elements);
+        for (int i = 0; i < total_elements; i++) {
+            scanf("%d", &global_array[i]);
+        }
+    }
+
+    // Broadcast M to all processes
+    MPI_Bcast(&M, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    
+    // Update N in all processes
+    N = size;
+    total_elements = N * M;
+
+    // Allocate memory for local array in each process
+    local_array = (int *)malloc(M * sizeof(int));
+    local_results = (double *)malloc(M * sizeof(double));
+
+    // Scatter the array to all processes
+    MPI_Scatter(global_array, M, MPI_INT, local_array, M, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process computes based on its rank
+    // Rank 0: square (pow 2)
+    // Rank 1: cube (pow 3)
+    // Rank 2: 4th power (pow 4), and so on
+    for (int i = 0; i < M; i++) {
+        local_results[i] = pow(local_array[i], rank + 2);
+    }
+
+    // Allocate memory for global results at root
+    if (rank == 0) {
+        global_results = (double *)malloc(total_elements * sizeof(double));
+    }
+
+    // Gather all results back to root
+    MPI_Gather(local_results, M, MPI_DOUBLE, global_results, M, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+
+    // Root process prints the results
+    if (rank == 0) {
+        printf("\nResults:\n");
+        for (int i = 0; i < N; i++) {
+            printf("Process %d (power %d):\n", i, i + 2);
+            for (int j = 0; j < M; j++) {
+                printf("%.2f ", global_results[i * M + j]);
+            }
+            printf("\n");
+        }
+    }
+
+    // Free allocated memory
+    if (rank == 0) {
+        free(global_array);
+        free(global_results);
+    }
+    free(local_array);
+    free(local_results);
+
+    // Finalize MPI
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_power mpi_power.c -lm
+// mpirun -np 3 ./mpi_power
+
+
+Lab3/mpi_even_odd_count.c
+
+
+#include <mpi.h>
+#include <stdio.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, N = 9;
+    int A[9] = {1, 2, 3, 4, 5, 6, 7, 8, 9};  // Input array
+    int local_size, local_A[9], local_result[9];
+    int even_count = 0, odd_count = 0, local_even = 0, local_odd = 0;
+
+    MPI_Init(&argc, &argv);                 // Initialize MPI
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);   // Get process rank
+    MPI_Comm_size(MPI_COMM_WORLD, &size);   // Get total number of processes
+
+    local_size = N / size;  // Each process gets equal chunk
+
+    // Scatter array elements to all processes
+    MPI_Scatter(A, local_size, MPI_INT, local_A, local_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process processes its part
+    for (int i = 0; i < local_size; i++) {
+        if (local_A[i] % 2 == 0) {
+            local_result[i] = 1;
+            local_even++;
+        } else {
+            local_result[i] = 0;
+            local_odd++;
+        }
+    }
+
+    // Gather results back to root process
+    MPI_Gather(local_result, local_size, MPI_INT, A, local_size, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Reduce even and odd counts to root
+    MPI_Reduce(&local_even, &even_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+    MPI_Reduce(&local_odd, &odd_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // Root process prints the result
+    if (rank == 0) {
+        printf("Resultant Array (A): ");
+        for (int i = 0; i < N; i++) {
+            printf("%d ", A[i]);
+        }
+        printf("\nEven (Count)  = %d\n", even_count);
+        printf("Odd  (Count)  = %d\n", odd_count);
+    }
+
+    MPI_Finalize();  // Finalize MPI
+    return 0;
+}
+
+// mpicc -o mpi_array mpi_array.c
+// mpirun -np 3 ./mpi_array
+
+
+Lab3/mpi_fact_sum.c
+
+
+#include <mpi.h>
+#include <stdio.h>
+
+// Function to compute factorial
+long long factorial(int n) {
+    long long fact = 1;
+    for (int i = 2; i <= n; i++) {
+        fact *= i;
+    }
+    return fact;
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int N;
+    int value;
+    long long fact, total_sum = 0;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        // Root process reads N values
+        printf("Enter the number of values (N): ");
+        scanf("%d", &N);
+
+        if (N != size) {
+            printf("Run with exactly N processes!\n");
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+
+        int values[N];
+        printf("Enter %d values: ", N);
+        for (int i = 0; i < N; i++) {
+            scanf("%d", &values[i]);
+        }
+
+        // Send one value to each worker process
+        for (int i = 0; i < N; i++) {
+            MPI_Send(&values[i], 1, MPI_INT, i, 0, MPI_COMM_WORLD);
+        }
+    }
+
+    // All processes receive a value, compute factorial, and return result
+    MPI_Recv(&value, 1, MPI_INT, 0, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    fact = factorial(value);
+
+    // Root gathers results
+    MPI_Reduce(&fact, &total_sum, 1, MPI_LONG_LONG, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // Root process prints the final result
+    if (rank == 0) {
+        printf("Sum of factorials: %lld\n", total_sum);
+    }
+
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_factorial mpi_factorial.c
+// mpirun -np 4 ./mpi_factorial
+
+
+Lab3/mpi_matrix_avg(NXM).c
+
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, M, N, total_elements;
+    double local_avg = 0.0, global_avg = 0.0;
+    
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    
+    N = size; // Number of processes
+    int *array = NULL; 
+    int *local_array = (int *)malloc(M * sizeof(int));
+    
+    if (rank == 0) {
+        printf("Enter the number of elements per process (M): ");
+        scanf("%d", &M);
+
+        total_elements = N * M;
+        array = (int *)malloc(total_elements * sizeof(int));
+
+        printf("Enter %d elements: ", total_elements);
+        for (int i = 0; i < total_elements; i++) {
+            scanf("%d", &array[i]);
+        }
+    }
+
+    // Broadcast M to all processes
+    MPI_Bcast(&M, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Scatter M elements to each process
+    MPI_Scatter(array, M, MPI_INT, local_array, M, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Compute local average
+    int sum = 0;
+    for (int i = 0; i < M; i++) {
+        sum += local_array[i];
+    }
+    local_avg = (double)sum / M;
+
+    // Gather all averages at root process
+    MPI_Reduce(&local_avg, &global_avg, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // Compute final average at root process
+    if (rank == 0) {
+        global_avg = global_avg / N;
+        printf("Final average: %.2f\n", global_avg);
+        free(array);
+    }
+
+    free(local_array);
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_average mpi_average.c
+// mpirun -np 4 ./mpi_average
+
+
+Lab3/mpi_non-vowel_count.c
+
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+// Function to check if a character is a vowel
+int is_vowel(char c) {
+    c = tolower(c);
+    return (c == 'a' || c == 'e' || c == 'i' || c == 'o' || c == 'u');
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size, str_length, local_count = 0, total_non_vowels = 0;
+    char *str = NULL;
+    char *local_str;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        // Read the input string
+        printf("Enter the string: ");
+        char buffer[256];
+        scanf("%s", buffer);
+
+        str_length = strlen(buffer);
+
+        // Ensure the string length is divisible by the number of processes
+        if (str_length % size != 0) {
+            printf("Error: String length must be evenly divisible by %d processes.\n", size);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+
+        str = buffer;
+    }
+
+    // Broadcast the string length to all processes
+    MPI_Bcast(&str_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process gets str_length / size characters
+    int chunk_size = str_length / size;
+    local_str = (char *)malloc(chunk_size * sizeof(char));
+
+    // Scatter the string to all processes
+    MPI_Scatter(str, chunk_size, MPI_CHAR, local_str, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Count non-vowel characters in the received chunk
+    for (int i = 0; i < chunk_size; i++) {
+        if (!is_vowel(local_str[i])) {
+            local_count++;
+        }
+    }
+
+    // Gather all local counts at the root process
+    int *counts = NULL;
+    if (rank == 0) {
+        counts = (int *)malloc(size * sizeof(int));
+    }
+
+    MPI_Gather(&local_count, 1, MPI_INT, counts, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Print results at the root process
+    if (rank == 0) {
+        printf("\nNon-vowel counts from each process:\n");
+        for (int i = 0; i < size; i++) {
+            printf("Process %d: %d non-vowels\n", i, counts[i]);
+            total_non_vowels += counts[i];
+        }
+        printf("Total non-vowel count: %d\n", total_non_vowels);
+        free(counts);
+    }
+
+    free(local_str);
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_non_vowel mpi_non_vowel.c
+// mpirun -np 4 ./mpi_non_vowel
+
+
+Lab3/mpi_str_alt_concat.c
+
+
+#include <mpi.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size, str_length, chunk_size;
+    char *S1 = NULL, *S2 = NULL, *local_S1, *local_S2, *local_result, *result = NULL;
+
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    if (rank == 0) {
+        // Read the two strings
+        char buffer1[256], buffer2[256];
+        printf("Enter first string (S1): ");
+        scanf("%s", buffer1);
+        printf("Enter second string (S2): ");
+        scanf("%s", buffer2);
+
+        str_length = strlen(buffer1);
+        
+        // Ensure both strings have the same length
+        if (str_length != strlen(buffer2)) {
+            printf("Error: Strings must be of the same length.\n");
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        
+        // Ensure string length is divisible by the number of processes
+        if (str_length % size != 0) {
+            printf("Error: String length must be evenly divisible by %d processes.\n", size);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+
+        S1 = buffer1;
+        S2 = buffer2;
+        result = (char *)malloc(2 * str_length * sizeof(char));
+    }
+
+    // Broadcast the string length to all processes
+    MPI_Bcast(&str_length, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Calculate the chunk size each process will handle
+    chunk_size = str_length / size;
+
+    // Allocate space for each process's part
+    local_S1 = (char *)malloc(chunk_size * sizeof(char));
+    local_S2 = (char *)malloc(chunk_size * sizeof(char));
+    local_result = (char *)malloc(2 * chunk_size * sizeof(char));
+
+    // Scatter S1 and S2 to all processes
+    MPI_Scatter(S1, chunk_size, MPI_CHAR, local_S1, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+    MPI_Scatter(S2, chunk_size, MPI_CHAR, local_S2, chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Interleave the characters from local S1 and S2
+    for (int i = 0; i < chunk_size; i++) {
+        local_result[2 * i] = local_S1[i];
+        local_result[2 * i + 1] = local_S2[i];
+    }
+
+    // Gather the interleaved result at root
+    MPI_Gather(local_result, 2 * chunk_size, MPI_CHAR, result, 2 * chunk_size, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Root process prints the final result
+    if (rank == 0) {
+        result[2 * str_length] = '\0';  // Null-terminate the string
+        printf("\nResultant String: %s\n", result);
+        free(result);
+    }
+
+    // Free allocated memory
+    free(local_S1);
+    free(local_S2);
+    free(local_result);
+
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_interleave mpi_interleave.c
+// mpicc -o mpi_interleave mpi_interleave.c
+
+
+Lab4/mpi_fact_sum_with_errors.c
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+// Function to compute factorial of a number
+unsigned long long factorial(int n) {
+    if (n <= 1) return 1;
+    unsigned long long result = 1;
+    for (int i = 2; i <= n; i++) {
+        result *= i;
+    }
+    return result;
+}
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int err_code;
+    unsigned long long local_fact, partial_sum;
+
+    // Initialize MPI with error handling
+    err_code = MPI_Init(&argc, &argv);
+    if (err_code != MPI_SUCCESS) {
+        char error_string[BUFSIZ];
+        int length;
+        MPI_Error_string(err_code, error_string, &length);
+        fprintf(stderr, "MPI_Init failed: %s\n", error_string);
+        return 1;
+    }
+
+    // Get rank and size with error handling
+    err_code = MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    if (err_code != MPI_SUCCESS) {
+        char error_string[BUFSIZ];
+        int length;
+        MPI_Error_string(err_code, error_string, &length);
+        fprintf(stderr, "MPI_Comm_rank failed: %s\n", error_string);
+        MPI_Finalize();
+        return 1;
+    }
+
+    err_code = MPI_Comm_size(MPI_COMM_WORLD, &size);
+    if (err_code != MPI_SUCCESS) {
+        char error_string[BUFSIZ];
+        int length;
+        MPI_Error_string(err_code, error_string, &length);
+        fprintf(stderr, "MPI_Comm_size failed: %s\n", error_string);
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Check if size is at least 1
+    if (size < 1) {
+        if (rank == 0) {
+            fprintf(stderr, "Error: Number of processes must be at least 1, got %d\n", size);
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Each process computes factorial based on its rank
+    // Rank 0 computes 1!, Rank 1 computes 2!, ..., Rank (size-1) computes size!
+    local_fact = factorial(rank + 1);
+
+    // Use MPI_Scan to compute the partial sum up to each process
+    err_code = MPI_Scan(&local_fact, &partial_sum, 1, MPI_UNSIGNED_LONG_LONG, MPI_SUM, MPI_COMM_WORLD);
+    if (err_code != MPI_SUCCESS) {
+        char error_string[BUFSIZ];
+        int length;
+        MPI_Error_string(err_code, error_string, &length);
+        fprintf(stderr, "MPI_Scan failed at rank %d: %s\n", rank, error_string);
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Process with rank (size-1) computes (size+1)! and adds it to the sum
+    unsigned long long final_sum = partial_sum;
+    if (rank == size - 1) {
+        unsigned long long next_fact = factorial(size + 1);
+        final_sum += next_fact;
+        printf("Sum of factorials from 1! to %d! = %llu\n", size + 1, final_sum);
+    }
+
+    // Finalize MPI
+    err_code = MPI_Finalize();
+    if (err_code != MPI_SUCCESS) {
+        char error_string[BUFSIZ];
+        int length;
+        MPI_Error_string(err_code, error_string, &length);
+        fprintf(stderr, "MPI_Finalize failed: %s\n", error_string);
+        return 1;
+    }
+
+    return 0;
+}
+
+// mpicc -o mpi_factorial_sum mpi_factorial_sum.c
+// mpirun -np 3 ./mpi_factorial_sum
+
+
+Lab4/mpi_letter_repeat.c
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <mpi.h>
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    char *input_word = NULL;      // Input word at root
+    char local_char;              // Character for each process
+    char *local_output = NULL;    // Repeated characters for each process
+    char *final_output = NULL;    // Final output string at root
+    int *recv_counts = NULL;      // Number of characters each process sends
+    int *displacements = NULL;    // Displacements for MPI_Gatherv
+    int N;                        // Length of the input word
+
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Root process reads the input word
+    if (rank == 0) {
+        char buffer[100];
+        printf("Enter a word: ");
+        scanf("%s", buffer);
+        N = strlen(buffer);
+
+        // Check if the number of processes matches the length of the word
+        if (N != size) {
+            fprintf(stderr, "Error: Number of processes (%d) must match the length of the word (%d).\n", size, N);
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+
+        // Allocate memory for the input word
+        input_word = (char *)malloc((N + 1) * sizeof(char));
+        strcpy(input_word, buffer);
+
+        // Print the input word for clarity
+        printf("Input word: %s\n", input_word);
+    }
+
+    // Broadcast the length of the word to all processes
+    MPI_Bcast(&N, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Check if the number of processes matches the length of the word in all processes
+    if (N != size) {
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Scatter the characters of the input word to all processes
+    MPI_Scatter(input_word, 1, MPI_CHAR, &local_char, 1, MPI_CHAR, 0, MPI_COMM_WORLD);
+
+    // Each process repeats its character (rank + 1) times
+    int repeat_count = rank + 1;
+    local_output = (char *)malloc((repeat_count + 1) * sizeof(char));
+    for (int i = 0; i < repeat_count; i++) {
+        local_output[i] = local_char;
+    }
+    local_output[repeat_count] = '\0';  // Null-terminate the string
+
+    // Prepare for MPI_Gatherv
+    if (rank == 0) {
+        // Allocate arrays for receive counts and displacements
+        recv_counts = (int *)malloc(size * sizeof(int));
+        displacements = (int *)malloc(size * sizeof(int));
+
+        // Compute the total length of the output
+        int total_length = (N * (N + 1)) / 2;
+        final_output = (char *)malloc((total_length + 1) * sizeof(char));
+
+        // Set receive counts and displacements
+        int offset = 0;
+        for (int i = 0; i < size; i++) {
+            recv_counts[i] = i + 1;  // Process i sends (i+1) characters
+            displacements[i] = offset;
+            offset += recv_counts[i];
+        }
+    }
+
+    // Gather the repeated characters from all processes to the root
+    MPI_Gatherv(local_output, repeat_count, MPI_CHAR, 
+                final_output, recv_counts, displacements, MPI_CHAR, 
+                0, MPI_COMM_WORLD);
+
+    // Root process prints the final output
+    if (rank == 0) {
+        final_output[(N * (N + 1)) / 2] = '\0';  // Null-terminate the final string
+        printf("Output word: %s\n", final_output);
+
+        // Free allocated memory
+        free(input_word);
+        free(recv_counts);
+        free(displacements);
+        free(final_output);
+    }
+
+    // Free local memory
+    free(local_output);
+
+    // Finalize MPI
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_word_pattern mpi_word_pattern.c
+// mpirun -np 4 ./mpi_word_pattern
+
+
+Lab4/mpi_matrix_search(no.of.occurences).c
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+#define ROWS 3
+#define COLS 3
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int matrix[ROWS * COLS]; // 1D array to store the 3x3 matrix
+    int local_row[COLS];     // Array to store one row for each process
+    int search_element;      // Element to search for
+    int local_count = 0;     // Count of occurrences in each process
+    int total_count = 0;     // Total count across all processes
+
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Check if the number of processes is exactly 3
+    if (size != 3) {
+        if (rank == 0) {
+            fprintf(stderr, "Error: This program requires exactly 3 processes, but %d were provided.\n", size);
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Root process reads the matrix and the element to search for
+    if (rank == 0) {
+        printf("Enter the elements of the 3x3 matrix (row-wise):\n");
+        for (int i = 0; i < ROWS * COLS; i++) {
+            scanf("%d", &matrix[i]);
+        }
+
+        printf("Enter the element to search for: ");
+        scanf("%d", &search_element);
+
+        // Print the matrix for clarity
+        printf("\nMatrix entered:\n");
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                printf("%d ", matrix[i * COLS + j]);
+            }
+            printf("\n");
+        }
+    }
+
+    // Broadcast the search element to all processes
+    MPI_Bcast(&search_element, 1, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Scatter the matrix rows to all processes
+    // Each process gets one row (3 elements)
+    MPI_Scatter(matrix, COLS, MPI_INT, local_row, COLS, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process counts the occurrences of the search element in its row
+    for (int i = 0; i < COLS; i++) {
+        if (local_row[i] == search_element) {
+            local_count++;
+        }
+    }
+
+    // Reduce the counts from all processes to get the total count at the root
+    MPI_Reduce(&local_count, &total_count, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    // Root process prints the result
+    if (rank == 0) {
+        printf("Element %d appears %d times in the matrix.\n", search_element, total_count);
+    }
+
+    // Finalize MPI
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_matrix_search mpi_matrix_search.c
+// mpirun -np 3 ./mpi_matrix_search
+
+
+Lab4/mpi_matrix_transform(using p-4).c
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+#define ROWS 4
+#define COLS 4
+#define OUTPUT_ROWS 5
+
+int main(int argc, char *argv[]) {
+    int rank, size;
+    int matrix[ROWS * COLS];          // Input matrix stored as 1D array
+    int local_row[COLS];              // Each process gets one row
+    int local_output[COLS];           // Each process's output row
+    int output_matrix[OUTPUT_ROWS * COLS]; // Final output matrix at root
+
+    // Initialize MPI
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    // Check if the number of processes is exactly 4
+    if (size != 4) {
+        if (rank == 0) {
+            fprintf(stderr, "Error: This program requires exactly 4 processes, but %d were provided.\n", size);
+        }
+        MPI_Finalize();
+        return 1;
+    }
+
+    // Root process reads the 4x4 matrix
+    if (rank == 0) {
+        printf("Enter the elements of the 4x4 matrix (row-wise):\n");
+        for (int i = 0; i < ROWS * COLS; i++) {
+            scanf("%d", &matrix[i]);
+        }
+
+        // Print the input matrix for clarity
+        printf("\nInput Matrix:\n");
+        for (int i = 0; i < ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                printf("%d ", matrix[i * COLS + j]);
+            }
+            printf("\n");
+        }
+    }
+
+    // Scatter the matrix rows to all processes
+    MPI_Scatter(matrix, COLS, MPI_INT, local_row, COLS, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Each process computes its output row based on the rank
+    if (rank == 0) {
+        // Process 0: First row of output is the same as the first row of input
+        for (int j = 0; j < COLS; j++) {
+            local_output[j] = local_row[j];
+        }
+    } else if (rank == 1) {
+        // Process 1: Multiply first row by 2, adjust the last element
+        for (int j = 0; j < COLS - 1; j++) {
+            local_output[j] = local_row[0] * 2;  // local_row[0] is first row
+        }
+        local_output[COLS - 1] = local_row[0] + 4;  // Adjust last element (e.g., 1 -> 5)
+    } else if (rank == 2) {
+        // Process 2: Same as Process 1's output
+        for (int j = 0; j < COLS - 1; j++) {
+            local_output[j] = local_row[0] * 2;  // local_row[0] is first row
+        }
+        local_output[COLS - 1] = local_row[0] + 4;
+    } else if (rank == 3) {
+        // Process 3: Increment Process 1's output by 1 (with adjustment)
+        for (int j = 0; j < COLS - 1; j++) {
+            local_output[j] = (local_row[0] * 2) + 1;  // local_row[0] is first row
+        }
+        local_output[COLS - 1] = local_row[0] + 4 + 1;
+    }
+
+    // Gather the output rows from all processes to the root
+    MPI_Gather(local_output, COLS, MPI_INT, output_matrix, COLS, MPI_INT, 0, MPI_COMM_WORLD);
+
+    // Root process computes the fifth row and prints the output matrix
+    if (rank == 0) {
+        // Compute the fifth row based on the fourth row (Process 3's output)
+        for (int j = 0; j < COLS - 1; j++) {
+            output_matrix[4 * COLS + j] = output_matrix[3 * COLS + j] + 2;
+        }
+        output_matrix[4 * COLS + (COLS - 1)] = output_matrix[3 * COLS + (COLS - 1)] + 1;
+
+        // Print the output matrix
+        printf("\nOutput Matrix:\n");
+        for (int i = 0; i < OUTPUT_ROWS; i++) {
+            for (int j = 0; j < COLS; j++) {
+                printf("%d ", output_matrix[i * COLS + j]);
+            }
+            printf("\n");
+        }
+    }
+
+    // Finalize MPI
+    MPI_Finalize();
+    return 0;
+}
+
+// mpicc -o mpi_matrix_transform mpi_matrix_transform.c
+// mpirun -np 4 ./mpi_matrix_transform
+
+
+Lab5/cuda_(vector_addn)blockN_Nthreads.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+
+__global__ void vectorAdd_blockSizeAsN(int* A, int* B, int* C, int N) {
+    int index = threadIdx.x;
+    if (index < N) {
+        C[index] = A[index] + B[index];
+    }
+}
+
+__global__ void vectorAdd_NThreads(int* A, int* B, int* C, int N) {
+    int index = blockIdx.x;
+    if (index < N) {
+        C[index] = A[index] + B[index];
+    }
+}
+
+int main() {
+    int N = 10;
+    size_t size = N * sizeof(int);
+
+    int *h_A = (int*)malloc(size);
+    int *h_B = (int*)malloc(size);
+    int *h_C = (int*)malloc(size);
+    
+    for (int i = 0; i < N; i++) {
+        h_A[i] = i;
+        h_B[i] = 2 * i;
+    }
+
+    int *d_A, *d_B, *d_C;
+
+    cudaMalloc(&d_A, size);
+    cudaMalloc(&d_B, size);
+    cudaMalloc(&d_C, size);
+
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    vectorAdd_blockSizeAsN<<<1, N>>>(d_A, d_B, d_C, N);
+
+    vectorAdd_NThreads<<<N, 1>>>(d_A, d_B, d_C, N);
+
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    printf("Result Vector C:\n");
+    for (int i = 0; i < N; i++) {
+        printf("%d + %d = %d\n", h_A[i], h_B[i], h_C[i]);
+    }
+
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    free(h_A);
+    free(h_B);
+    free(h_C);
+
+    return 0;
+}
+
+
+Lab5/cuda_every_row_selection_sort.cu
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define N 4 // Number of rows
+#define M 5 // Number of columns
+
+__global__ void selectionSortRows(int *matrix, int cols) {
+    int row = blockIdx.x; // Each block handles one row
+    
+    for (int i = 0; i < cols - 1; i++) {
+        int min_idx = i;
+        for (int j = i + 1; j < cols; j++) {
+            if (matrix[row * cols + j] < matrix[row * cols + min_idx]) {
+                min_idx = j;
+            }
+        }
+        if (min_idx != i) {
+            int temp = matrix[row * cols + i];
+            matrix[row * cols + i] = matrix[row * cols + min_idx];
+            matrix[row * cols + min_idx] = temp;
+        }
+    }
+}
+
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int h_matrix[N][M] = {
+        {64, 34, 25, 12, 22},
+        {90, 11, 45, 2, 8},
+        {15, 3, 99, 20, 4},
+        {78, 56, 30, 10, 18}
+    };
+
+    int *d_matrix;
+    size_t size = N * M * sizeof(int);
+    
+    cudaMalloc((void**)&d_matrix, size);
+    cudaMemcpy(d_matrix, h_matrix, size, cudaMemcpyHostToDevice);
+    
+    selectionSortRows<<<N, 1>>>(d_matrix, M);
+    cudaMemcpy(h_matrix, d_matrix, size, cudaMemcpyDeviceToHost);
+    
+    printf("Sorted Matrix:\n");
+    printMatrix((int*)h_matrix, N, M);
+    
+    cudaFree(d_matrix);
+    return 0;
+}
+
+
+Lab5/cuda_linear_algebra.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+
+// CUDA kernel to perform y = alpha * x + y
+__global__ void saxpy(int n, float alpha, float *x, float *y) {
+    // Calculate the global thread index
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Check if the index is within the vector size
+    if (idx < n) {
+        y[idx] = alpha * x[idx] + y[idx];
+    }
+}
+
+int main() {
+    int n;              // Size of the vectors
+    float alpha;        // Scalar value
+    float *h_x, *h_y;   // Host vectors
+    float *d_x, *d_y;   // Device vectors
+
+    // Input the size of the vectors
+    printf("Enter the size of the vectors: ");
+    scanf("%d", &n);
+
+    // Input the scalar alpha
+    printf("Enter the scalar alpha: ");
+    scanf("%f", &alpha);
+
+    // Allocate memory for host vectors
+    h_x = (float *)malloc(n * sizeof(float));
+    h_y = (float *)malloc(n * sizeof(float));
+
+    // Input the elements of vector x
+    printf("Enter the elements of vector x:\n");
+    for (int i = 0; i < n; i++) {
+        scanf("%f", &h_x[i]);
+    }
+
+    // Input the elements of vector y
+    printf("Enter the elements of vector y:\n");
+    for (int i = 0; i < n; i++) {
+        scanf("%f", &h_y[i]);
+    }
+
+    // Allocate memory for device vectors
+    cudaMalloc(&d_x, n * sizeof(float));
+    cudaMalloc(&d_y, n * sizeof(float));
+
+    // Copy vectors from host to device
+    cudaMemcpy(d_x, h_x, n * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_y, h_y, n * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Define the block and grid dimensions
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Launch the SAXPY kernel
+    saxpy<<<blocksPerGrid, threadsPerBlock>>>(n, alpha, d_x, d_y);
+
+    // Check for kernel launch errors
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel launch error: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    // Copy the result back to the host
+    cudaMemcpy(h_y, d_y, n * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Print the result
+    printf("\nResulting vector y (after y = alpha * x + y):\n");
+    for (int i = 0; i < n; i++) {
+        printf("%.2f ", h_y[i]);
+    }
+    printf("\n");
+
+    // Free device memory
+    cudaFree(d_x);
+    cudaFree(d_y);
+
+    // Free host memory
+    free(h_x);
+    free(h_y);
+
+    return 0;
+}
+
+
+Lab5/cuda_odd_even_parallel_sort.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define N 4 // Number of rows
+#define M 5 // Number of columns
+
+__global__ void oddEvenSortRows(int *matrix, int cols) {
+    int row = blockIdx.x;
+    for (int phase = 0; phase < cols; phase++) {
+        int i = threadIdx.x * 2 + (phase % 2);
+        if (i < cols - 1) {
+            int idx1 = row * cols + i;
+            int idx2 = row * cols + i + 1;
+            if (matrix[idx1] > matrix[idx2]) {
+                int temp = matrix[idx1];
+                matrix[idx1] = matrix[idx2];
+                matrix[idx2] = temp;
+            }
+        }
+        __syncthreads();
+    }
+}
+
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int h_matrix[N][M] = {
+        {64, 34, 25, 12, 22},
+        {90, 11, 45, 2, 8},
+        {15, 3, 99, 20, 4},
+        {78, 56, 30, 10, 18}
+    };
+
+    int *d_matrix;
+    size_t size = N * M * sizeof(int);
+    
+    cudaMalloc((void**)&d_matrix, size);
+    cudaMemcpy(d_matrix, h_matrix, size, cudaMemcpyHostToDevice);
+    
+    oddEvenSortRows<<<N, M/2>>>(d_matrix, M);
+    cudaMemcpy(h_matrix, d_matrix, size, cudaMemcpyDeviceToHost);
+    
+    printf("Sorted Matrix:\n");
+    printMatrix((int*)h_matrix, N, M);
+    
+    cudaFree(d_matrix);
+    return 0;
+}
+
+
+Lab5/cuda_sine_of_angles.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+#include <math.h>
+
+__global__ void calculateSine(float* input, float* output, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < N) {
+        output[i] = sinf(input[i]);
+    }
+}
+
+int main() {
+    int N = 10;
+    size_t size = N * sizeof(float);
+
+    float *h_input = (float*)malloc(size);
+    float *h_output = (float*)malloc(size);
+
+    for (int i = 0; i < N; i++) {
+        h_input[i] = i * 0.1;
+    }
+
+    float *d_input, *d_output;
+    cudaMalloc(&d_input, size);
+    cudaMalloc(&d_output, size);
+
+    cudaMemcpy(d_input, h_input, size, cudaMemcpyHostToDevice);
+    int threadsPerBlock = 256;
+    int numBlocks = (N + threadsPerBlock - 1) / threadsPerBlock;
+    calculateSine<<<numBlocks, threadsPerBlock>>>(d_input, d_output, N);
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        printf("CUDA kernel launch failed: %s\n", cudaGetErrorString(err));
+        return -1;
+    }
+    cudaMemcpy(h_output, d_output, size, cudaMemcpyDeviceToHost);
+    printf("Angle(rad):\tSines");
+    for (int i = 0; i < N; i++) {
+        printf("\nsin(%f):\t%f\n", h_input[i], h_output[i]);
+    }
+    cudaFree(d_input);
+    cudaFree(d_output);
+    free(h_input);
+    free(h_output);
+    return 0;
+}
+
+
+
+Lab5/cuda_vecAdd256.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+
+__global__ void vecAdd(int* A, int* B, int* C, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < N) {
+        C[i] = A[i]+B[i];
+    }
+}
+
+int main() {
+    int N = 1024;
+    size_t size = N * sizeof(int);
+
+    int *h_A = (int*)malloc(size);
+    int *h_B = (int*)malloc(size);
+    int *h_C = (int*)malloc(size);
+    
+    for (int i = 0; i < N; i++) {
+        h_A[i] = i;
+        h_B[i] = 2 * i;
+    }
+
+    int *d_A, *d_B, *d_C;
+
+    cudaMalloc(&d_A, size);
+    cudaMalloc(&d_B, size);
+    cudaMalloc(&d_C, size);
+
+    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
+
+    int threadsPerBlock = 256;
+    int numBlocks = (N + threadsPerBlock - 1) / threadsPerBlock;
+    vecAdd<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_C, N);
+    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+
+    printf("Result Vector C:\n");
+    for (int i = 0; i < N; i++) {
+        printf("%d + %d = %d\n", h_A[i], h_B[i], h_C[i]);
+    }
+
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    free(h_A);
+    free(h_B);
+    free(h_C);
+
+    return 0;
+}
+
+
+
+Lab6/cuda_convolution_mask_array.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define WIDTH 10
+#define MASK_WIDTH 3
+
+__global__ void convolution1D(int *N, int *M, int *P, int width, int mask_width) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int radius = mask_width / 2;
+    int sum = 0;
+    
+    if (i < width) {
+        for (int j = -radius; j <= radius; j++) {
+            int index = i + j;
+            if (index >= 0 && index < width) {
+                sum += N[index] * M[j + radius];
+            }
+        }
+        P[i] = sum;
+    }
+}
+
+void printArray(int *array, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    int h_N[WIDTH] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    int h_M[MASK_WIDTH] = {1, 0, -1};
+    int h_P[WIDTH];
+    
+    int *d_N, *d_M, *d_P;
+    size_t size_N = WIDTH * sizeof(int);
+    size_t size_M = MASK_WIDTH * sizeof(int);
+    
+    cudaMalloc((void**)&d_N, size_N);
+    cudaMalloc((void**)&d_M, size_M);
+    cudaMalloc((void**)&d_P, size_N);
+    
+    cudaMemcpy(d_N, h_N, size_N, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_M, h_M, size_M, cudaMemcpyHostToDevice);
+    
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (WIDTH + threadsPerBlock - 1) / threadsPerBlock;
+    
+    convolution1D<<<blocksPerGrid, threadsPerBlock>>>(d_N, d_M, d_P, WIDTH, MASK_WIDTH);
+    
+    cudaMemcpy(h_P, d_P, size_N, cudaMemcpyDeviceToHost);
+    
+    printf("Resultant Array:\n");
+    printArray(h_P, WIDTH);
+    
+    cudaFree(d_N);
+    cudaFree(d_M);
+    cudaFree(d_P);
+    
+    return 0;
+}
+
+
+Lab6/cuda_octal_parallel.cu
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define N 10
+
+__device__ int toOctal(int num) {
+    int octal = 0, place = 1;
+    while (num > 0) {
+        octal += (num % 8) * place;
+        num /= 8;
+        place *= 10;
+    }
+    return octal;
+}
+
+__global__ void convertToOctal(int *input, int *output, int size) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size) {
+        output[i] = toOctal(input[i]);
+    }
+}
+
+void printArray(int *array, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    int h_input[N] = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+    int h_output[N];
+    
+    int *d_input, *d_output;
+    size_t size = N * sizeof(int);
+    
+    cudaMalloc((void**)&d_input, size);
+    cudaMalloc((void**)&d_output, size);
+    
+    cudaMemcpy(d_input, h_input, size, cudaMemcpyHostToDevice);
+    
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+    
+    convertToOctal<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_output, N);
+    
+    cudaMemcpy(h_output, d_output, size, cudaMemcpyDeviceToHost);
+    
+    printf("Octal Values:\n");
+    printArray(h_output, N);
+    
+    cudaFree(d_input);
+    cudaFree(d_output);
+    
+    return 0;
+}
+
+
+Lab6/cuda_odd_even_transposition_sort.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define N 4 // Number of rows
+#define M 5 // Number of columns
+
+__global__ void oddEvenSortRows(int *matrix, int cols) {
+    int row = blockIdx.x;
+    for (int phase = 0; phase < cols; phase++) {
+        int i = threadIdx.x * 2 + (phase % 2);
+        if (i < cols - 1) {
+            int idx1 = row * cols + i;
+            int idx2 = row * cols + i + 1;
+            if (matrix[idx1] > matrix[idx2]) {
+                int temp = matrix[idx1];
+                matrix[idx1] = matrix[idx2];
+                matrix[idx2] = temp;
+            }
+        }
+        __syncthreads();
+    }
+}
+
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int h_matrix[N][M] = {
+        {64, 34, 25, 12, 22},
+        {90, 11, 45, 2, 8},
+        {15, 3, 99, 20, 4},
+        {78, 56, 30, 10, 18}
+    };
+
+    int *d_matrix;
+    size_t size = N * M * sizeof(int);
+    
+    cudaMalloc((void**)&d_matrix, size);
+    cudaMemcpy(d_matrix, h_matrix, size, cudaMemcpyHostToDevice);
+    
+    oddEvenSortRows<<<N, M/2>>>(d_matrix, M);
+    cudaMemcpy(h_matrix, d_matrix, size, cudaMemcpyDeviceToHost);
+    
+    printf("Sorted Matrix:\n");
+    printMatrix((int*)h_matrix, N, M);
+    
+    cudaFree(d_matrix);
+    return 0;
+}
+
+
+Lab6/cuda_ones_complement.cu
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define N 10
+
+__device__ int onesComplement(int num) {
+    int complement = 0, place = 1;
+    while (num > 0) {
+        int bit = num % 10;
+        complement += ((bit == 0) ? 1 : 0) * place;
+        num /= 10;
+        place *= 10;
+    }
+    return complement;
+}
+
+__global__ void computeOnesComplement(int *input, int *output, int size) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < size) {
+        output[i] = onesComplement(input[i]);
+    }
+}
+
+void printArray(int *array, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%d ", array[i]);
+    }
+    printf("\n");
+}
+
+int main() {
+    int h_input[N] = {1010, 1100, 1001, 1111, 0000, 1011, 1101, 1000, 0110, 0011};
+    int h_output[N];
+    
+    int *d_input, *d_output;
+    size_t size = N * sizeof(int);
+    
+    cudaMalloc((void**)&d_input, size);
+    cudaMalloc((void**)&d_output, size);
+    
+    cudaMemcpy(d_input, h_input, size, cudaMemcpyHostToDevice);
+    
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (N + threadsPerBlock - 1) / threadsPerBlock;
+    
+    computeOnesComplement<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_output, N);
+    
+    cudaMemcpy(h_output, d_output, size, cudaMemcpyDeviceToHost);
+    
+    printf("1's Complement Values:\n");
+    printArray(h_output, N);
+    
+    cudaFree(d_input);
+    cudaFree(d_output);
+    
+    return 0;
+}
+
+
+Lab6/cuda_row_parallel_selection_sort.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda.h>
+
+#define N 4 // Number of rows
+#define M 5 // Number of columns
+
+__global__ void selectionSortRows(int *matrix, int cols) {
+    int row = blockIdx.x; // Each block handles one row
+    
+    for (int i = 0; i < cols - 1; i++) {
+        int min_idx = i;
+        for (int j = i + 1; j < cols; j++) {
+            if (matrix[row * cols + j] < matrix[row * cols + min_idx]) {
+                min_idx = j;
+            }
+        }
+        if (min_idx != i) {
+            int temp = matrix[row * cols + i];
+            matrix[row * cols + i] = matrix[row * cols + min_idx];
+            matrix[row * cols + min_idx] = temp;
+        }
+    }
+}
+
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int h_matrix[N][M] = {
+        {64, 34, 25, 12, 22},
+        {90, 11, 45, 2, 8},
+        {15, 3, 99, 20, 4},
+        {78, 56, 30, 10, 18}
+    };
+
+    int *d_matrix;
+    size_t size = N * M * sizeof(int);
+    
+    cudaMalloc((void**)&d_matrix, size);
+    cudaMemcpy(d_matrix, h_matrix, size, cudaMemcpyHostToDevice);
+    
+    selectionSortRows<<<N, 1>>>(d_matrix, M);
+    cudaMemcpy(h_matrix, d_matrix, size, cudaMemcpyDeviceToHost);
+    
+    printf("Sorted Matrix:\n");
+    printMatrix((int*)h_matrix, N, M);
+    
+    cudaFree(d_matrix);
+    return 0;
+}
+
+
+Lab7/cuda_letter_repeat.cu
+
+
+#include <stdio.h>
+#include <string.h>
+#include <cuda.h>
+
+#define MAX_LEN 256
+
+__global__ void expandString(char *input, char *output, int *positions, int length) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < length) {
+        int startPos = positions[i];
+        for (int j = 0; j < i + 1; j++) {
+            output[startPos + j] = input[i];
+        }
+    }
+}
+
+void computePositions(int *positions, int length) {
+    positions[0] = 0;
+    for (int i = 1; i < length; i++) {
+        positions[i] = positions[i - 1] + i;
+    }
+}
+
+int main() {
+    char h_input[MAX_LEN] = "Hai";
+    int length = strlen(h_input);
+    
+    int h_positions[MAX_LEN];
+    computePositions(h_positions, length);
+    int outputLength = h_positions[length - 1] + length;
+    char h_output[MAX_LEN] = {0};
+    
+    char *d_input, *d_output;
+    int *d_positions;
+    
+    cudaMalloc((void**)&d_input, length + 1);
+    cudaMalloc((void**)&d_output, outputLength + 1);
+    cudaMalloc((void**)&d_positions, length * sizeof(int));
+    
+    cudaMemcpy(d_input, h_input, length + 1, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_positions, h_positions, length * sizeof(int), cudaMemcpyHostToDevice);
+    
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (length + threadsPerBlock - 1) / threadsPerBlock;
+    expandString<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_output, d_positions, length);
+    
+    cudaMemcpy(h_output, d_output, outputLength + 1, cudaMemcpyDeviceToHost);
+    
+    printf("Expanded Output: %s\n", h_output);
+    
+    cudaFree(d_input);
+    cudaFree(d_output);
+    cudaFree(d_positions);
+    
+    return 0;
+}
+
+
+Lab7/cuda_string_concat.cu
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <cuda_runtime.h>
+
+// CUDA kernel to concatenate the input string N times
+__global__ void concatenateString(const char *Sin, char *Sout, int M, int N) {
+    // Calculate the global thread index
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Check if the index is within the length of the input string (M)
+    if (idx < M) {
+        // Each thread copies the character at position idx in Sin to N positions in Sout
+        char ch = Sin[idx];
+        for (int k = 0; k < N; k++) {
+            int out_idx = idx + k * M;  // Position in Sout: idx, idx+M, idx+2M, ...
+            Sout[out_idx] = ch;
+        }
+    }
+}
+
+int main() {
+    char *h_Sin;        // Input string on host
+    char *h_Sout;       // Output string on host
+    char *d_Sin;        // Input string on device
+    char *d_Sout;       // Output string on device
+    int M;              // Length of input string
+    int N;              // Number of repetitions
+    int Sout_length;    // Length of output string
+
+    // Input the string
+    char buffer[100];
+    printf("Enter the input string Sin: ");
+    scanf("%s", buffer);
+    M = strlen(buffer);
+
+    // Input the number of repetitions
+    printf("Enter the number of repetitions N: ");
+    scanf("%d", &N);
+
+    // Calculate the length of the output string
+    Sout_length = M * N;
+
+    // Allocate memory for the input string on the host
+    h_Sin = (char *)malloc((M + 1) * sizeof(char));
+    strcpy(h_Sin, buffer);
+
+    // Allocate memory for the output string on the host
+    h_Sout = (char *)malloc((Sout_length + 1) * sizeof(char));
+
+    // Allocate memory on the device
+    cudaMalloc(&d_Sin, (M + 1) * sizeof(char));
+    cudaMalloc(&d_Sout, (Sout_length + 1) * sizeof(char));
+
+    // Copy the input string from host to device
+    cudaMemcpy(d_Sin, h_Sin, (M + 1) * sizeof(char), cudaMemcpyHostToDevice);
+
+    // Define the block and grid dimensions
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (M + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Launch the CUDA kernel
+    concatenateString<<<blocksPerGrid, threadsPerBlock>>>(d_Sin, d_Sout, M, N);
+
+    // Check for kernel launch errors
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel launch error: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    // Copy the result back to the host
+    cudaMemcpy(h_Sout, d_Sout, Sout_length * sizeof(char), cudaMemcpyDeviceToHost);
+    h_Sout[Sout_length] = '\0';  // Null-terminate the output string
+
+    // Print the result
+    printf("Input string Sin: %s\n", h_Sin);
+    printf("Number of repetitions N: %d\n", N);
+    printf("Output string Sout: %s\n", h_Sout);
+
+    // Free device memory
+    cudaFree(d_Sin);
+    cudaFree(d_Sout);
+
+    // Free host memory
+    free(h_Sin);
+    free(h_Sout);
+
+    return 0;
+}
+
+
+Lab7/cuda_string_repeat_S_to_RS.cu
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <cuda_runtime.h>
+
+// CUDA kernel to copy characters from S to RS
+__global__ void repeatString(const char *S, char *RS, int N) {
+    // Calculate the global thread index
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // Check if the index is within the output string length (2N)
+    if (idx < 2 * N) {
+        // Map the output index to the input string index
+        RS[idx] = S[idx % N];
+    }
+}
+
+int main() {
+    char *h_S;          // Input string on host
+    char *h_RS;         // Output string on host
+    char *d_S;          // Input string on device
+    char *d_RS;         // Output string on device
+    int N;              // Length of input string
+    int RS_length;      // Length of output string
+
+    // Input the string
+    char buffer[100];
+    printf("Enter the input string S: ");
+    scanf("%s", buffer);
+    N = strlen(buffer);
+
+    // Calculate the length of the output string
+    RS_length = 2 * N;
+
+    // Allocate memory for the input string on the host
+    h_S = (char *)malloc((N + 1) * sizeof(char));
+    strcpy(h_S, buffer);
+
+    // Allocate memory for the output string on the host
+    h_RS = (char *)malloc((RS_length + 1) * sizeof(char));
+
+    // Allocate memory on the device
+    cudaMalloc(&d_S, (N + 1) * sizeof(char));
+    cudaMalloc(&d_RS, (RS_length + 1) * sizeof(char));
+
+    // Copy the input string from host to device
+    cudaMemcpy(d_S, h_S, (N + 1) * sizeof(char), cudaMemcpyHostToDevice);
+
+    // Define the block and grid dimensions
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (RS_length + threadsPerBlock - 1) / threadsPerBlock;
+
+    // Launch the CUDA kernel
+    repeatString<<<blocksPerGrid, threadsPerBlock>>>(d_S, d_RS, N);
+
+    // Check for kernel launch errors
+    cudaError_t err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "CUDA kernel launch error: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    // Copy the result back to the host
+    cudaMemcpy(h_RS, d_RS, RS_length * sizeof(char), cudaMemcpyDeviceToHost);
+    h_RS[RS_length] = '\0';  // Null-terminate the output string
+
+    // Print the result
+    printf("Input string S: %s\n", h_S);
+    printf("Output string RS: %s\n", h_RS);
+
+    // Free device memory
+    cudaFree(d_S);
+    cudaFree(d_RS);
+
+    // Free host memory
+    free(h_S);
+    free(h_RS);
+
+    return 0;
+}
+
+
+Lab7/cuda_word_count_repeated_using_atomic.cu
+
+#include <stdio.h>
+#include <string.h>
+#include <cuda.h>
+
+#define MAX_WORDS 100
+#define MAX_WORD_LENGTH 20
+
+__device__ bool isWordMatch(const char *sentence, int start, const char *word, int wordLen, int sentenceLen) {
+    if (start + wordLen > sentenceLen) return false;
+    for (int i = 0; i < wordLen; i++) {
+        if (sentence[start + i] != word[i]) return false;
+    }
+    return (start + wordLen == sentenceLen || sentence[start + wordLen] == ' ');
+}
+
+__global__ void countWordOccurrences(char *sentence, char *word, int *count, int sentenceLen, int wordLen) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < sentenceLen && (i == 0 || sentence[i - 1] == ' ')) {
+        if (isWordMatch(sentence, i, word, wordLen, sentenceLen)) {
+            atomicAdd(count, 1);
+        }
+    }
+}
+
+int main() {
+    char h_sentence[] = "cuda is fast and cuda is powerful and cuda is parallel";
+    char h_word[] = "cuda";
+    int h_count = 0;
+
+    char *d_sentence, *d_word;
+    int *d_count;
+    int sentenceLen = strlen(h_sentence);
+    int wordLen = strlen(h_word);
+
+    cudaMalloc((void**)&d_sentence, sentenceLen + 1);
+    cudaMalloc((void**)&d_word, wordLen + 1);
+    cudaMalloc((void**)&d_count, sizeof(int));
+
+    cudaMemcpy(d_sentence, h_sentence, sentenceLen + 1, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_word, h_word, wordLen + 1, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_count, &h_count, sizeof(int), cudaMemcpyHostToDevice);
+
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (sentenceLen + threadsPerBlock - 1) / threadsPerBlock;
+    countWordOccurrences<<<blocksPerGrid, threadsPerBlock>>>(d_sentence, d_word, d_count, sentenceLen, wordLen);
+
+    cudaMemcpy(&h_count, d_count, sizeof(int), cudaMemcpyDeviceToHost);
+
+    printf("The word '%s' appears %d times in the sentence.\n", h_word, h_count);
+
+    cudaFree(d_sentence);
+    cudaFree(d_word);
+    cudaFree(d_count);
+
+    return 0;
+}
+
+
+Lab7/cuda_word_reverse.cu
+
+#include <stdio.h>
+#include <string.h>
+#include <cuda.h>
+
+#define MAX_LEN 256
+
+__device__ void reverseWord(char *sentence, int start, int end) {
+    while (start < end) {
+        char temp = sentence[start];
+        sentence[start] = sentence[end];
+        sentence[end] = temp;
+        start++;
+        end--;
+    }
+}
+
+__global__ void reverseWords(char *sentence, int length) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i < length && (i == 0 || sentence[i - 1] == ' ')) {
+        int start = i, end = i;
+        while (end < length && sentence[end] != ' ') {
+            end++;
+        }
+        reverseWord(sentence, start, end - 1);
+    }
+}
+
+int main() {
+    char h_sentence[MAX_LEN] = "cuda is powerful and fast";
+    int length = strlen(h_sentence);
+    
+    char *d_sentence;
+    cudaMalloc((void**)&d_sentence, length + 1);
+    cudaMemcpy(d_sentence, h_sentence, length + 1, cudaMemcpyHostToDevice);
+    
+    int threadsPerBlock = 256;
+    int blocksPerGrid = (length + threadsPerBlock - 1) / threadsPerBlock;
+    reverseWords<<<blocksPerGrid, threadsPerBlock>>>(d_sentence, length);
+    
+    cudaMemcpy(h_sentence, d_sentence, length + 1, cudaMemcpyDeviceToHost);
+    
+    printf("Reversed words: %s\n", h_sentence);
+    
+    cudaFree(d_sentence);
+    return 0;
+}
+
+
+Lab8/cuda_diagonal_fact_sum.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+#define N 3  // Matrix size
+__device__ int factorial(int num) {
+    if (num == 0 || num == 1) return 1;
+    int fact = 1;
+    for (int i = 2; i <= num; i++)
+        fact *= i;
+    return fact;
+}
+__device__ int sumOfDigits(int num) {
+    int sum = 0;
+    while (num > 0) {
+        sum += num % 10;
+        num /= 10;
+    }
+    return sum;
+}
+__global__ void transformMatrix(int *A, int *B, int size) {
+    int row = blockIdx.x;
+    int col = threadIdx.x;
+    if (row < size && col < size) {
+        int value = A[row * size + col];
+        if (row == col) {
+            B[row * size + col] = 0;  
+        } else if (row < col) {
+            B[row * size + col] = factorial(value);  
+        } else {
+            B[row * size + col] = sumOfDigits(value);  
+        }
+    }
+}
+void printMatrix(int *matrix, int size) {
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            printf("%d\t", matrix[i * size + j]);
+        }
+        printf("\n");
+    }
+}
+int main() {
+    int A[N * N], B[N * N];
+    int *d_A, *d_B;
+    for (int i = 0; i < N * N; i++) {
+        A[i] = rand() % 10;  
+    }
+    printf("Original Matrix A:\n");
+    printMatrix(A, N);
+    cudaMalloc(&d_A, N * N * sizeof(int));
+    cudaMalloc(&d_B, N * N * sizeof(int));
+    cudaMemcpy(d_A, A, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    transformMatrix<<<N, N>>>(d_A, d_B, N);
+    cudaMemcpy(B, d_B, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nTransformed Matrix B:\n");
+    printMatrix(B, N);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    return 0;
+}
+
+
+Lab8/cuda_even-rowsum_odd-colsum.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+#define M 3  
+#define N 3  
+__global__ void computeRowSum(int *A, int *rowSum, int rows, int cols) {
+    int row = blockIdx.x;
+    if (row < rows) {
+        int sum = 0;
+        for (int j = 0; j < cols; j++) {
+            sum += A[row * cols + j];
+        }
+        rowSum[row] = sum;
+    }
+}
+__global__ void computeColumnSum(int *A, int *colSum, int rows, int cols) {
+    int col = blockIdx.x;
+    if (col < cols) {
+        int sum = 0;
+        for (int i = 0; i < rows; i++) {
+            sum += A[i * cols + col];
+        }
+        colSum[col] = sum;
+    }
+}
+__global__ void transformMatrix(int *A, int *B, int *rowSum, int *colSum, int rows, int cols) {
+    int row = blockIdx.x;
+    int col = threadIdx.x;
+    if (row < rows && col < cols) {
+        int value = A[row * cols + col];
+        if (value % 2 == 0) {
+            B[row * cols + col] = rowSum[row];  
+        } else {
+            B[row * cols + col] = colSum[col];  
+        }
+    }
+}
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+int main() {
+    int A[M * N], B[M * N];
+    int *d_A, *d_B, *d_rowSum, *d_colSum;
+    for (int i = 0; i < M * N; i++) {
+        A[i] = rand() % 10;
+    }
+    printf("Original Matrix A:\n");
+    printMatrix(A, M, N);
+    cudaMalloc(&d_A, M * N * sizeof(int));
+    cudaMalloc(&d_B, M * N * sizeof(int));
+    cudaMalloc(&d_rowSum, M * sizeof(int));
+    cudaMalloc(&d_colSum, N * sizeof(int));
+    cudaMemcpy(d_A, A, M * N * sizeof(int), cudaMemcpyHostToDevice);
+    computeRowSum<<<M, 1>>>(d_A, d_rowSum, M, N);
+    computeColumnSum<<<N, 1>>>(d_A, d_colSum, M, N);
+    transformMatrix<<<M, N>>>(d_A, d_B, d_rowSum, d_colSum, M, N);
+    cudaMemcpy(B, d_B, M * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nTransformed Matrix B:\n");
+    printMatrix(B, M, N);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_rowSum);
+    cudaFree(d_colSum);
+    return 0;
+}
+
+
+Lab8/cuda_matrix_add.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+#define N 3  
+__global__ void matrixAddElementWise(int *A, int *B, int *C, int rows, int cols) {
+    int row = blockIdx.x;
+    int col = threadIdx.x;
+
+    if (row < rows && col < cols) {
+        int index = row * cols + col;
+        C[index] = A[index] + B[index];
+    }
+}
+__global__ void matrixAddRowWise(int *A, int *B, int *C, int rows, int cols) {
+    int row = blockIdx.x;
+
+    if (row < rows) {
+        for (int col = 0; col < cols; col++) {
+            int index = row * cols + col;
+            C[index] = A[index] + B[index];
+        }
+    }
+}
+__global__ void matrixAddColumnWise(int *A, int *B, int *C, int rows, int cols) {
+    int col = blockIdx.x;
+
+    if (col < cols) {
+        for (int row = 0; row < rows; row++) {
+            int index = row * cols + col;
+            C[index] = A[index] + B[index];
+        }
+    }
+}
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+int main() {
+    int A[N * N], B[N * N], C[N * N];
+    int *d_A, *d_B, *d_C;
+
+    for (int i = 0; i < N * N; i++) {
+        A[i] = rand() % 10;
+        B[i] = rand() % 10;
+    }
+    cudaMalloc(&d_A, N * N * sizeof(int));
+    cudaMalloc(&d_B, N * N * sizeof(int));
+    cudaMalloc(&d_C, N * N * sizeof(int));
+    cudaMemcpy(d_A, A, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    matrixAddElementWise<<<N, N>>>(d_A, d_B, d_C, N, N);
+    cudaMemcpy(C, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("Element-wise Addition:\n");
+    printMatrix(C, N, N);
+    matrixAddRowWise<<<N, 1>>>(d_A, d_B, d_C, N, N);
+    cudaMemcpy(C, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nRow-wise Addition:\n");
+    printMatrix(C, N, N);
+    matrixAddColumnWise<<<N, 1>>>(d_A, d_B, d_C, N, N);
+    cudaMemcpy(C, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nColumn-wise Addition:\n");
+    printMatrix(C, N, N);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+    return 0;
+}
+
+
+Lab8/cuda_matrix_mul.cu
+
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <cuda_runtime.h>
+#define N 3  
+__global__ void matrixMulElementWise(int *A, int *B, int *C, int rows, int cols) {
+    int row = blockIdx.x;
+    int col = threadIdx.x;
+
+    if (row < rows && col < cols) {
+        int sum = 0;
+        for (int k = 0; k < cols; k++) {
+            sum += A[row * cols + k] * B[k * cols + col];
+        }
+        C[row * cols + col] = sum;
+    }
+}
+__global__ void matrixMulRowWise(int *A, int *B, int *C, int rows, int cols) {
+    int row = blockIdx.x;
+    if (row < rows) {
+        for (int col = 0; col < cols; col++) {
+            int sum = 0;
+            for (int k = 0; k < cols; k++) {
+                sum += A[row * cols + k] * B[k * cols + col];
+            }
+            C[row * cols + col] = sum;
+        }
+    }
+}
+__global__ void matrixMulColumnWise(int *A, int *B, int *C, int rows, int cols) {
+    int col = blockIdx.x;
+
+    if (col < cols) {
+        for (int row = 0; row < rows; row++) {
+            int sum = 0;
+            for (int k = 0; k < cols; k++) {
+                sum += A[row * cols + k] * B[k * cols + col];
+            }
+            C[row * cols + col] = sum;
+        }
+    }
+}
+void printMatrix(int *matrix, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+            printf("%d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
+int main() {
+    int A[N * N], B[N * N], C[N * N];
+    int *d_A, *d_B, *d_C;
+
+    for (int i = 0; i < N * N; i++) {
+        A[i] = rand() % 10;
+        B[i] = rand() % 10;
+    }
+    printf("Matrix A:\n");
+    printMatrix(A, N, N);
+    printf("\nMatrix B:\n");
+    printMatrix(B, N, N);
+    cudaMalloc(&d_A, N * N * sizeof(int));
+    cudaMalloc(&d_B, N * N * sizeof(int));
+    cudaMalloc(&d_C, N * N * sizeof(int));
+    cudaMemcpy(d_A, A, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, N * N * sizeof(int), cudaMemcpyHostToDevice);
+    matrixMulElementWise<<<N, N>>>(d_A, d_B, d_C, N, N);
+    cudaMemcpy(C, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nElement-wise Multiplication:\n");
+    printMatrix(C, N, N);
+    matrixMulRowWise<<<N, 1>>>(d_A, d_B, d_C, N, N);
+    cudaMemcpy(C, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nRow-wise Multiplication:\n");
+    printMatrix(C, N, N);
+    matrixMulColumnWise<<<N, 1>>>(d_A, d_B, d_C, N, N);
+    cudaMemcpy(C, d_C, N * N * sizeof(int), cudaMemcpyDeviceToHost);
+    printf("\nColumn-wise Multiplication:\n");
+    printMatrix(C, N, N);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+    return 0;
+}
+
+
+Lab9/spmv
+
+
+#include <stdio.h>
+#include <cuda.h>
+
+#define N 4  // Example matrix size (N x N)
+
+// Kernel to perform Sparse Matrix-Vector Multiplication using CSR format
+__global__ void spmv_csr(int *row_ptr, int *col_idx, float *values, float *x, float *y, int num_rows) {
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < num_rows) {
+        float sum = 0.0f;
+        for (int j = row_ptr[row]; j < row_ptr[row + 1]; j++) {
+            sum += values[j] * x[col_idx[j]];
+        }
+        y[row] = sum;
+    }
+}
+
+void printVector(float *vec, int size) {
+    for (int i = 0; i < size; i++) {
+        printf("%f\n", vec[i]);
+    }
+}
+
+int main() {
+    // Example sparse matrix in CSR format
+    int row_ptr[N + 1] = {0, 2, 4, 7, 9};
+    int col_idx[] = {0, 1, 0, 2, 1, 2, 3, 2, 3};
+    float values[] = {10, 20, 30, 40, 50, 60, 70, 80, 90};
+    float x[N] = {1, 2, 3, 4}; // Input vector
+    float y[N] = {0};          // Output vector
+
+    int *d_row_ptr, *d_col_idx;
+    float *d_values, *d_x, *d_y;
+
+    // Allocate device memory
+    cudaMalloc(&d_row_ptr, (N + 1) * sizeof(int));
+    cudaMalloc(&d_col_idx, 9 * sizeof(int));
+    cudaMalloc(&d_values, 9 * sizeof(float));
+    cudaMalloc(&d_x, N * sizeof(float));
+    cudaMalloc(&d_y, N * sizeof(float));
+
+    // Copy data to device
+    cudaMemcpy(d_row_ptr, row_ptr, (N + 1) * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_col_idx, col_idx, 9 * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_values, values, 9 * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_x, x, N * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_y, y, N * sizeof(float), cudaMemcpyHostToDevice);
+
+    // Define grid and block size
+    int blockSize = 256;
+    int gridSize = (N + blockSize - 1) / blockSize;
+
+    // Launch kernel
+    spmv_csr<<<gridSize, blockSize>>>(d_row_ptr, d_col_idx, d_values, d_x, d_y, N);
+
+    // Copy result back to host
+    cudaMemcpy(y, d_y, N * sizeof(float), cudaMemcpyDeviceToHost);
+
+    // Print result
+    printf("Resultant Vector:\n");
+    printVector(y, N);
+
+    // Free device memory
+    cudaFree(d_row_ptr);
+    cudaFree(d_col_idx);
+    cudaFree(d_values);
+    cudaFree(d_x);
+    cudaFree(d_y);
+
+    return 0;
+}
+
+
+Lab9/replace elements matrix
+
+
+#include <stdio.h>
+#include <cuda.h>
+
+#define M 4  // Number of rows
+#define N 4  // Number of columns
+
+// Kernel to transform matrix
+__global__ void transformMatrix(int *A, int *B, int m, int n) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < m && col < n) {
+        int exponent = row + 1; // Row number determines the exponent
+        int value = A[row * n + col];
+        int result = 1;
+        for (int i = 0; i < exponent; i++) {
+            result *= value;
+        }
+        B[row * n + col] = result;
+    }
+}
+
+void printMatrix(int *matrix, int m, int n) {
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            printf("%d ", matrix[i * n + j]);
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int size = M * N * sizeof(int);
+    int *A, *B;
+    int *d_A, *d_B;
+
+    // Allocate host memory
+    A = (int*)malloc(size);
+    B = (int*)malloc(size);
+
+    // Initialize matrix A with random values
+    for (int i = 0; i < M * N; i++) {
+        A[i] = (rand() % 9) + 1; // Random values 1-9
+    }
+
+    // Allocate device memory
+    cudaMalloc(&d_A, size);
+    cudaMalloc(&d_B, size);
+
+    // Copy matrix to device
+    cudaMemcpy(d_A, A, size, cudaMemcpyHostToDevice);
+
+    // Define block and grid size
+    dim3 blockDim(16, 16);
+    dim3 gridDim((N + blockDim.x - 1) / blockDim.x, (M + blockDim.y - 1) / blockDim.y);
+
+    // Transform matrix
+    transformMatrix<<<gridDim, blockDim>>>(d_A, d_B, M, N);
+    cudaMemcpy(B, d_B, size, cudaMemcpyDeviceToHost);
+
+    // Print results
+    printf("Matrix A:\n"); printMatrix(A, M, N);
+    printf("\nResult Matrix B:\n"); printMatrix(B, M, N);
+
+    // Free memory
+    cudaFree(d_A);
+    cudaFree(d_B);
+    free(A);
+    free(B);
+
+    return 0;
+}
+
+
+
+Lab9/non-border-elements 1's complement
+
+
+#include <stdio.h>
+#include <cuda_runtime.h>
+#include <bitset>
+
+#define M 4  // Number of rows
+#define N 4  // Number of columns
+#define CUDA_CHECK(cmd) { cudaError_t error = cmd; if (error != cudaSuccess) { printf("CUDA error: %s (%s:%d)\n", cudaGetErrorString(error), __FILE__, __LINE__); exit(1); } }
+
+__global__ void transformMatrix(int *A, int *B, int m, int n) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    if (row < m && col < n) {
+        if (row == 0 || row == m - 1 || col == 0 || col == n - 1) {
+            B[row * n + col] = A[row * n + col];
+        } else {
+            B[row * n + col] = ~A[row * n + col] & 0xF; // 4-bit 1's complement
+        }
+    }
+}
+
+void printMatrix(int *matrix, int m, int n) {
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (i > 0 && i < m-1 && j > 0 && j < n-1) {
+                // Print non-border elements in 4-bit binary
+                std::bitset<4> bs(matrix[i * n + j]);
+                printf("%4s ", bs.to_string().c_str());
+            } else {
+                // Print border elements as decimal
+                printf("%4d ", matrix[i * n + j]);
+            }
+        }
+        printf("\n");
+    }
+}
+
+int main() {
+    int size = M * N * sizeof(int);
+
+    // Specific input matrix
+    int A[M][N] = {
+        {1,  2,  3,  4},
+        {6,  5,  8,  3},
+        {2,  4, 10,  1},
+        {9,  1,  2,  5}
+    };
+
+    int *B = (int*)malloc(size);
+    int *d_A, *d_B;
+
+    CUDA_CHECK(cudaMalloc(&d_A, size));
+    CUDA_CHECK(cudaMalloc(&d_B, size));
+    CUDA_CHECK(cudaMemcpy(d_A, A, size, cudaMemcpyHostToDevice));
+
+    dim3 blockDim(2, 2);
+    dim3 gridDim((N + blockDim.x - 1)/blockDim.x,
+                (M + blockDim.y - 1)/blockDim.y);
+
+    transformMatrix<<<gridDim, blockDim>>>(d_A, d_B, M, N);
+    CUDA_CHECK(cudaMemcpy(B, d_B, size, cudaMemcpyDeviceToHost));
+
+    printf("Input Matrix A:\n");
+    for (int i = 0; i < M; i++) {
+        for (int j = 0; j < N; j++) {
+            printf("%4d ", A[i][j]);
+        }
+        printf("\n");
+    }
+
+    printf("\nOutput Matrix B:\n");
+    printMatrix(B, M, N);
+
+    CUDA_CHECK(cudaFree(d_A));
+    CUDA_CHECK(cudaFree(d_B));
+    free(B);
+
+    return 0;
+}
+
+
+Lab9/matrixA-B-calculated-parallel
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<cuda_runtime.h>
+__global__ void op(int *a,int *b,int row, int col){
+  int idx=threadIdx.x+blockIdx.x*blockDim.x;
+  if(idx<row*col){
+      int i=(int)(idx/col);
+      int j=(int)(idx%col);
+      int sum=0;
+      for(int k=0;k<col;k++){
+        sum=sum+a[i*col+k];
+      }
+      for(int k=0;k<row;k++){
+        sum=sum+a[k*col+j];
+      }
+      b[idx]=sum;
+
+  }
+}
+
+void printArray(int row,int col, int *arr){
+  for(int i=0;i<row;i++){
+    for(int j=0;j<col;j++){
+      printf("%d ",arr[i*col+j]);
+    }
+    printf("\n");
+  }
+}
+int main(){
+  int m,n;
+  printf("Enter the matrix size: ");
+  scanf("%d",&m);
+  scanf("%d",&n);
+  int h_a[m*n],h_b[m*n];
+  printf("Enter the matrix A element:");
+  for(int i=0;i<m*n;i++)
+    scanf("%d",&h_a[i]);
+  int *d_a,*d_b;
+  cudaMalloc(&d_a,sizeof(int)*m*n);
+  cudaMalloc(&d_b,sizeof(int)*m*n);
+  cudaMemcpy(d_a,h_a,sizeof(int)*m*n,cudaMemcpyHostToDevice);
+  op<<<m,n>>>(d_a,d_b,m,n);
+  cudaMemcpy(h_b,d_b,sizeof(int)*m*n,cudaMemcpyDeviceToHost);
+  printf("Result: \n");
+  printArray(m,n,h_b);
+}
+
+
+Lab9/output-str-using-matrix-A-B
+
+
+#include<stdio.h>
+#include<stdlib.h>
+#include<cuda_runtime.h>
+__global__ void op(int *a,char *b,char *str,int row, int col){
+  int idx=threadIdx.x+blockIdx.x*blockDim.x;
+  if(idx<row*col){
+    int i=0;
+    for(int k=0;k<idx;k++)
+      i=i+a[k];
+    for(int j=i;j<i+a[idx];j++)
+      str[j]=b[idx];
+
+  }
+}
+int main(){
+  int m,n;
+  printf("Enter the matrix size: ");
+  scanf("%d",&m);
+  scanf("%d",&n);
+  int h_a[m*n];
+  char h_b[m*n];
+  printf("Enter the matrix int A element:");
+  for(int i=0;i<m*n;i++)
+    scanf("%d",&h_a[i]);
+  printf("Enter the matrix char B element:");
+  for(int i=0;i<m*n;i++)
+    scanf(" %c",&h_b[i]);
+  int *d_a;
+  char *d_b;
+  char *str;
+  int size=0;
+  for(int i=0;i<m*n;i++)
+    size=size+h_a[i];
+  size=size*sizeof(char);
+  cudaMalloc(&str,size);
+  cudaMalloc(&d_a,sizeof(int)*m*n);
+  cudaMalloc(&d_b,sizeof(char)*m*n);
+  cudaMemcpy(d_a,h_a,sizeof(int)*m*n,cudaMemcpyHostToDevice);
+  cudaMemcpy(d_b,h_b,sizeof(char)*m*n,cudaMemcpyHostToDevice);
+  op<<<m,n>>>(d_a,d_b,str,m,n);
+  char h_str[size];
+  cudaMemcpy(h_str,str,size,cudaMemcpyDeviceToHost);
+  h_str[size]='\0';
+  printf("Result is %s\n",h_str);
+}
+
+
+Lab10/matrix-mul-2d grid
+
+
+#include <stdio.h>
+#define N 4
+
+__global__ void matrixMul(int *A, int *B, int *C, int width) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    int sum = 0;
+    if (row < width && col < width) {
+        for (int k = 0; k < width; k++) {
+            sum += A[row * width + k] * B[k * width + col];
+        }
+        C[row * width + col] = sum;
+    }
+}
+
+void printMatrix(const char *label, int *mat, int width) {
+    printf("%s:\n", label);
+    for (int i = 0; i < width; i++) {
+        for (int j = 0; j < width; j++) {
+            printf("%d ", mat[i * width + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+int main() {
+    int size = N * N * sizeof(int);
+    int A[N*N], B[N*N], C[N*N];
+    int *d_A, *d_B, *d_C;
+
+    for (int i = 0; i < N*N; i++) {
+        A[i] = 2;
+        B[i] = 3;
+    }
+
+    cudaMalloc(&d_A, size); cudaMalloc(&d_B, size); cudaMalloc(&d_C, size);
+    cudaMemcpy(d_A, A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, size, cudaMemcpyHostToDevice);
+
+    dim3 threadsPerBlock(4, 4);
+    dim3 numBlocks(N / threadsPerBlock.x, N / threadsPerBlock.y);
+    matrixMul<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_C, N);
+
+    cudaMemcpy(C, d_C, size, cudaMemcpyDeviceToHost);
+
+    // Print input and output matrices
+    printMatrix("Matrix A", A, N);
+    printMatrix("Matrix B", B, N);
+    printMatrix("Result Matrix C", C, N);
+
+    cudaFree(d_A); cudaFree(d_B); cudaFree(d_C);
+    return 0;
+}
+
+
+Lab10/1d-parallel-conv-constant-memory
+
+
+#include <stdio.h>
+#define N 8
+#define FILTER_SIZE 3
+
+__constant__ int d_filter[FILTER_SIZE];
+
+__global__ void convolution1D(int *input, int *output, int size) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < size) {
+        int result = 0;
+        for (int i = 0; i < FILTER_SIZE; i++) {
+            int input_idx = idx - FILTER_SIZE / 2 + i;
+            if (input_idx >= 0 && input_idx < size) {
+                result += input[input_idx] * d_filter[i];
+            }
+        }
+        output[idx] = result;
+    }
+}
+
+void printArray(const char* label, int *arr, int size) {
+    printf("%s:\n", label);
+    for (int i = 0; i < size; i++) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n\n");
+}
+
+int main() {
+    int h_input[N], h_output[N], h_filter[FILTER_SIZE] = {1, 2, 1};
+    int *d_input, *d_output;
+
+    for (int i = 0; i < N; i++) h_input[i] = i;
+
+    cudaMalloc(&d_input, N * sizeof(int));
+    cudaMalloc(&d_output, N * sizeof(int));
+
+    cudaMemcpy(d_input, h_input, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(d_filter, h_filter, FILTER_SIZE * sizeof(int));
+
+    convolution1D<<<(N+15)/16, 16>>>(d_input, d_output, N);
+    cudaMemcpy(h_output, d_output, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print input array, filter, and result
+    printArray("Input Array", h_input, N);
+    printArray("Filter Mask", h_filter, FILTER_SIZE);
+    printArray("Convolution Result", h_output, N);
+
+    cudaFree(d_input); cudaFree(d_output);
+    return 0;
+}
+
+
+
+Lab10/inclusive-scan
+
+
+#include <stdio.h>
+#define N 8
+
+__global__ void inclusiveScan(int *input, int *output) {
+    __shared__ int temp[N]; // shared memory for scan
+    int tid = threadIdx.x;
+
+    // Load input into shared memory
+    temp[tid] = input[tid];
+    __syncthreads();
+
+    // Inclusive scan (prefix sum)
+    for (int offset = 1; offset < N; offset *= 2) {
+        int val = 0;
+        if (tid >= offset) {
+            val = temp[tid - offset];
+        }
+        __syncthreads();
+        temp[tid] += val;
+        __syncthreads();
+    }
+
+    // Write result to output
+    output[tid] = temp[tid];
+}
+
+void printArray(const char* label, int *arr, int size) {
+    printf("%s:\n", label);
+    for (int i = 0; i < size; i++) {
+        printf("%d ", arr[i]);
+    }
+    printf("\n\n");
+}
+
+int main() {
+    int h_input[N], h_output[N];
+    int *d_input, *d_output;
+
+    // Initialize input array
+    for (int i = 0; i < N; i++) h_input[i] = i + 1;  // 1 2 3 4 5 6 7 8
+
+    cudaMalloc(&d_input, N * sizeof(int));
+    cudaMalloc(&d_output, N * sizeof(int));
+
+    cudaMemcpy(d_input, h_input, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    inclusiveScan<<<1, N>>>(d_input, d_output);
+
+    cudaMemcpy(h_output, d_output, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print input and result
+    printArray("Input Array", h_input, N);
+    printArray("Inclusive Scan Result", h_output, N);
+
+    cudaFree(d_input); cudaFree(d_output);
+    return 0;
+}
+
+
+Lab10/shopping-menu
+
+#include <stdio.h>
+#define MAX_ITEMS 10
+#define MAX_FRIENDS 5
+
+__global__ void calculateTotal(int *choices, float *prices, float *total, int itemsPerFriend) {
+    int friendId = threadIdx.x;
+
+    float sum = 0;
+    for (int i = 0; i < itemsPerFriend; i++) {
+        int itemIndex = choices[friendId * itemsPerFriend + i];
+        if (itemIndex >= 0)
+            sum += prices[itemIndex];
+    }
+    total[friendId] = sum;
+}
+
+int main() {
+    int numItems, numFriends, itemsPerFriend;
+    float h_prices[MAX_ITEMS];
+    int h_choices[MAX_FRIENDS * MAX_ITEMS];
+    float h_total[MAX_FRIENDS];
+
+    printf("Enter number of items in menu: ");
+    scanf("%d", &numItems);
+    printf("Enter prices for %d items:\n", numItems);
+    for (int i = 0; i < numItems; i++) {
+        printf("Price of item %d: ", i);
+        scanf("%f", &h_prices[i]);
+    }
+
+    printf("\nEnter number of friends: ");
+    scanf("%d", &numFriends);
+    printf("Enter number of items each friend will purchase: ");
+    scanf("%d", &itemsPerFriend);
+
+    for (int i = 0; i < numFriends; i++) {
+        printf("\nEnter item indices (0-%d) for Friend %d:\n", numItems-1, i);
+        for (int j = 0; j < itemsPerFriend; j++) {
+            printf("Item %d: ", j+1);
+            scanf("%d", &h_choices[i * itemsPerFriend + j]);
+        }
+    }
+
+    float *d_prices, *d_total;
+    int *d_choices;
+    cudaMalloc(&d_prices, numItems * sizeof(float));
+    cudaMalloc(&d_choices, numFriends * itemsPerFriend * sizeof(int));
+    cudaMalloc(&d_total, numFriends * sizeof(float));
+
+    cudaMemcpy(d_prices, h_prices, numItems * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_choices, h_choices, numFriends * itemsPerFriend * sizeof(int), cudaMemcpyHostToDevice);
+
+    calculateTotal<<<1, numFriends>>>(d_choices, d_prices, d_total, itemsPerFriend);
+    cudaMemcpy(h_total, d_total, numFriends * sizeof(float), cudaMemcpyDeviceToHost);
+
+    float finalTotal = 0;
+    for (int i = 0; i < numFriends; i++) {
+        printf("Friend %d total: %.2f\n", i, h_total[i]);
+        finalTotal += h_total[i];
+    }
+    printf("Total purchase by all friends: %.2f\n", finalTotal);
+
+    cudaFree(d_prices); cudaFree(d_choices); cudaFree(d_total);
+    return 0;
+}
+
+
+Lab10/tiled-1D-conv
+
+#include <stdio.h>
+#define TILE_WIDTH 8
+#define MAX_WIDTH 64
+#define MAX_MASK_WIDTH 5
+
+__constant__ float d_mask[MAX_MASK_WIDTH];
+
+__global__ void tiledConvolution1D(float *input, float *output, int width, int mask_width) {
+    __shared__ float tile[TILE_WIDTH + MAX_MASK_WIDTH - 1];
+
+    int tid = threadIdx.x;
+    int start = blockIdx.x * TILE_WIDTH;
+    int halo = mask_width / 2;
+    int index = start + tid;
+
+    // Load data into shared memory with halo
+    if (index < width)
+        tile[tid] = input[index];
+    else
+        tile[tid] = 0.0f;
+
+    __syncthreads();
+
+    if (tid < TILE_WIDTH && (start + tid) < width) {
+        float result = 0.0f;
+        for (int j = 0; j < mask_width; j++) {
+            int dataIdx = tid + j - halo;
+            if (dataIdx >= 0 && dataIdx < TILE_WIDTH + mask_width - 1)
+                result += tile[dataIdx] * d_mask[j];
+        }
+        output[start + tid] = result;
+    }
+}
+
+int main() {
+    int width, mask_width;
+    float h_input[MAX_WIDTH], h_output[MAX_WIDTH], h_mask[MAX_MASK_WIDTH];
+
+    printf("Enter width of input array: ");
+    scanf("%d", &width);
+    printf("Enter input array elements:\n");
+    for (int i = 0; i < width; i++) scanf("%f", &h_input[i]);
+
+    printf("Enter mask width (odd number): ");
+    scanf("%d", &mask_width);
+    printf("Enter mask elements:\n");
+    for (int i = 0; i < mask_width; i++) scanf("%f", &h_mask[i]);
+
+    float *d_input, *d_output;
+    cudaMalloc(&d_input, width * sizeof(float));
+    cudaMalloc(&d_output, width * sizeof(float));
+    cudaMemcpy(d_input, h_input, width * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpyToSymbol(d_mask, h_mask, mask_width * sizeof(float));
+
+    int numBlocks = (width + TILE_WIDTH - 1) / TILE_WIDTH;
+    tiledConvolution1D<<<numBlocks, TILE_WIDTH + mask_width - 1>>>(d_input, d_output, width, mask_width);
+    cudaMemcpy(h_output, d_output, width * sizeof(float), cudaMemcpyDeviceToHost);
+
+    printf("Output after tiled 1D convolution:\n");
+    for (int i = 0; i < width; i++) {
+        printf("%.2f ", h_output[i]);
+    }
+
+    cudaFree(d_input); cudaFree(d_output);
+    return 0;
+}
+
+
+

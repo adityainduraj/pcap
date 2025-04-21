@@ -87,5 +87,5 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// mpicc -o mpi_power mpi_power.c -lm
-// mpirun -np 3 ./mpi_power
+// mpicc -o mpi_collective_squares mpi_collective_squares.c -lm
+// mpirun -np 3 ./mpi_collective_squares

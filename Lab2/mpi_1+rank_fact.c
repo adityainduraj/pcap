@@ -14,7 +14,7 @@ long long factorial(int num) {
 int main(int argc, char *argv[]) {
     int rank, size, N, i, sum = 0, partial_sum = 0;
     long long local_factorial, global_sum = 0;
-
+    fflush(stdout);
     MPI_Init(&argc, &argv);                   // Initialize MPI
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);     // Get process rank
     MPI_Comm_size(MPI_COMM_WORLD, &size);     // Get total number of processes
@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
     if (rank == 0) {
         // Root process reads the value of N
         printf("Enter value of N: ");
+        fflush(stdout);
         scanf("%d", &N);
         
         // Broadcast N to all processes

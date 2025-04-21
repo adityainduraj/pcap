@@ -47,6 +47,11 @@ int main() {
         A[i] = rand() % 10;
         B[i] = rand() % 10;
     }
+    printf("Matrix A:\n");
+    printMatrix(A, N, N);
+    printf("\nMatrix B:\n");
+    printMatrix(B, N, N);
+    printf("\n");
     cudaMalloc(&d_A, N * N * sizeof(int));
     cudaMalloc(&d_B, N * N * sizeof(int));
     cudaMalloc(&d_C, N * N * sizeof(int));

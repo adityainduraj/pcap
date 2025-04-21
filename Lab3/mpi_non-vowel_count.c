@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
     if (rank == 0) {
         // Read the input string
         printf("Enter the string: ");
+        fflush(stdout);
         char buffer[256];
         scanf("%s", buffer);
 
@@ -77,5 +78,5 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// mpicc -o mpi_non_vowel mpi_non_vowel.c
-// mpirun -np 4 ./mpi_non_vowel
+// mpicc -o mpi_non-vowel_count mpi_non-vowel_count.c
+// mpirun -np 4 ./mpi_non-vowel_count

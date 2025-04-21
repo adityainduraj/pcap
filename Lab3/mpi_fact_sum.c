@@ -58,5 +58,5 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
-// mpicc -o mpi_factorial mpi_factorial.c
-// mpirun -np 4 ./mpi_factorial
+// mpicc -o mpi_fact_sum mpi_fact_sum.c
+// mpirun -np 4 ./mpi_fact_sum
